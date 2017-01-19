@@ -256,13 +256,14 @@ def speed_test():
     """
     import numpy as np
     import utool as ut
-    low = 100
-    high = 100
+    low = 1000
+    high = 1000
     keys1 = np.arange(low)
     keys2 = np.arange(high) + 2 * low
     key = value = int(keys1.max() + keys2.min()) // 2
     # self  = AVLTree(list(zip(keys1, keys1)))
     # other = AVLTree(list(zip(keys2, keys2)))
+    import bintrees
 
     for n in [1, 10]:
         for timer in ut.Timerit(n, 'NEW union with join', verbose=n > 1):
@@ -271,7 +272,13 @@ def speed_test():
             with timer:
                 new1 = union_avl_trees(self1, other1)
 
-        for timer in ut.Timerit(n, 'ORIG original union', verbose=n > 1):
+        for timer in ut.Timerit(n, 'ORIG fast union', verbose=n > 1):
+            self2  = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+            other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+            with timer:
+                new2 = self2.union(other2)
+
+        for timer in ut.Timerit(n, 'ORIG slow union', verbose=n > 1):
             self2  = AVLTree(list(zip(keys1, keys1)))
             other2 = AVLTree(list(zip(keys2, keys2)))
             with timer:
