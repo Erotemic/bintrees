@@ -40,6 +40,7 @@ int ct_bintree_insert(node_t **root, PyObject *key, PyObject *value);
 int ct_bintree_remove(node_t **root, PyObject *key);
 
 /* avl-tree functions */
+int avl_tree_join(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value);
 int avl_insert(node_t **root, PyObject *key, PyObject *value);
 int avl_remove(node_t **root, PyObject *key);
 

@@ -50,6 +50,10 @@ class Node(object):
         self.value = value
         self.balance = 0
 
+    @property
+    def xdata(self):
+        return self.balance
+
     def __getitem__(self, key):
         """N.__getitem__(key) <==> x[key], where key is 0 (left) or 1 (right)."""
         return self.left if key == 0 else self.right
@@ -69,70 +73,36 @@ class Node(object):
         self.value = None
 
 
-def join_avl_trees(self, other, key, value):
-    """
-    Returns all elements from t1 and t2 as well as (key, val)
-    assert that t1.max() < key < t2.min()
-
-    Running time:
-        O(|height(t1) − height(t2)|)
-
-    References:
-        Just Join for Parallel Ordered Sets
-        https://dx.doi.org/10.1145%2F2935764.2935768
-        https://i.cs.hku.hk/~provinci/training2016/notes2.pdf
+def assert_avl_invariants(tree):
+    r"""
+    Args:
+        tree (AVLTree):
 
     CommandLine:
-        python -m bintrees.avltree join_avl_trees --show
+        python -m bintrees.avltree assert_avl_invariants
 
     Example:
         >>> # DISABLE_DOCTEST
         >>> from bintrees.avltree import *  # NOQA
-        >>> import utool as ut
-        >>> import numpy as np
-        >>> left = 1
-        >>> lowhigh = [1, 3]
-        >>> keys1 = np.arange(lowhigh[1 - left])
-        >>> keys2 = np.arange(lowhigh[left]) + 100
-        >>> self  = AVLTree(list(zip(keys1, keys1)))
-        >>> other = AVLTree(list(zip(keys2, keys2)))
-        >>> key = value = int(keys1.max() + keys2.min()) // 2
-        >>> t1 = self._root
-        >>> t2 = other._root
-        >>> new = join_avl_trees(self.copy(), other.copy(), key, value)
-        >>> import plottool as pt
-        >>> pt.qt4ensure()
-        >>> #graph = to_networkx(self, ['key', 'balance'])
-        >>> #pt.show_nx(graph, fnum=1, pnum=None)
-        >>> labels = ['key', 'balance']
-        >>> _ = pt.show_nx(to_networkx(self, labels), fnum=1, pnum=(2, 2, (0, 0)))
-        >>> _ = pt.show_nx(to_networkx(other, labels), fnum=1, pnum=(2, 2, (1, 0)))
-        >>> _ = pt.show_nx(to_networkx(new, labels), fnum=1, pnum=(2, 2, (slice(0, 2), 1)))
-        >>> ut.show_if_requested()
+        >>> import bintrees
+        >>> keys = list(range(10))
+        >>> print('CPython Version')
+        >>> tree = bintrees.AVLTree(list(zip(keys, keys)))
+        >>> ascii_tree(tree._root)
+        >>> assert_avl_invariants(tree)
+
+    Example:
+        >>> # DISABLE_DOCTEST
+        >>> from bintrees.avltree import *  # NOQA
+        >>> import bintrees
+        >>> keys = list(range(10))
+        >>> print('Cython Version')
+        >>> tree = bintrees.FastAVLTree(list(zip(keys, keys)))
+        >>> ascii_tree(tree._root)
+        >>> assert_avl_invariants(tree)
     """
-    try:
-        minceil_key = self.max_key()
-    except ValueError:
-        minceil_key = -float('inf')
-    try:
-        maxfloor_key = other.min_key()
-    except ValueError:
-        maxfloor_key = float('inf')
-
-    if not (minceil_key < key and key < maxfloor_key):
-        raise ValueError('invalid join_avl_trees args %r < %r < %r' % (
-            minceil_key, key, maxfloor_key))
-    t1 = self._root
-    t2 = other._root
-    top = join(t1, t2, key, value)
-    # Two trees are now joined inplace
-    self._root = other._root = top
-    self._count = other._count = self._count + other._count + 1
-    return self
-
-
-def assert_avl_invariants(tree):
-    for node in traverse_avl_nodes(tree._root):
+    for node in tree._traverse_nodes():
+        # for node in traverse_avl_nodes(tree._root):
         h1 = height(node.left)
         h2 = height(node.right)
         balance_factor = h1 - h2
@@ -163,42 +133,67 @@ def test_join_cases():
     """
     import numpy as np
     import utool as ut
-    lowhigh_cases = [
-        [1, 3],
-        [1, 10],
-        [1, 9],
-        [3, 9],
-        [2, 3],
-        [3, 32],
-    ]
+    import vtool as vt
+    # lowhigh_cases = [
+    #     [1, 3],
+    #     [1, 10],
+    #     [1, 9],
+    #     [3, 9],
+    #     [2, 3],
+    #     [3, 32],
+    # ]
+    import bintrees
+    # _AVLTree_cls = bintrees.AVLTree
+    _AVLTree_cls = bintrees.FastAVLTree
+
     # Exhaustively test that merging trees works
+    lowhigh_cases = []
     n = 4
     for x in range(0, 2 ** n):
         for y in range(0, 2 ** n):
-            lowhigh_cases += [[x, 2 ** n + y]]
+            lowhigh_cases += [[x, y]]
 
     offset = max(map(max, lowhigh_cases)) * 2
     directions = [0, 1]
 
     test_cases = list(ut.product(directions, lowhigh_cases))
-    for direction, lowhigh in ut.ProgIter(test_cases, label='test join'):
+    for direction, lowhigh in ut.ProgIter(test_cases, label='test avl_join'):
         keys1 = np.arange(lowhigh[direction])
         keys2 = np.arange(lowhigh[1 - direction]) + offset
-        try:
-            key = value = int(keys1.max() + keys2.min()) // 2
-        except ValueError:
-            try:
-                key = value = keys1.max() + 10
-            except ValueError:
-                key = value = keys2.min() - 10
 
-        self  = AVLTree(list(zip(keys1, keys1)))
-        other = AVLTree(list(zip(keys2, keys2)))
-        new = join_avl_trees(self, other, key, value)
+        mx1 = vt.safe_max(keys1, fill=0)
+        mn2 = vt.safe_min(keys2, fill=mx1 + 2)
+        key = value = int(mx1 + mn2) // 2
+
+        self  = _AVLTree_cls(list(zip(keys1, keys1)))
+        other = _AVLTree_cls(list(zip(keys2, keys2)))
+        # new = avl_tree_join(self, other, key, value)
+        new = self.join(other, key, value)
         assert_avl_invariants(new)
+
         assert len(new) == len(keys1) + len(keys2) + 1
-        assert self._root is new._root
-        assert other._root is new._root
+        assert self is new
+        assert other._root is None
+
+
+def test_cython_join_cases():
+    """
+    CommandLine:
+        python -m bintrees.avltree test_cython_join_cases
+    """
+    # Test Cython Version
+    direction = 1
+    lowhigh = [10, 20]
+    offset = 20 * 2
+    import numpy as np
+    import bintrees
+    keys1 = np.arange(lowhigh[direction])
+    keys2 = np.arange(lowhigh[1 - direction]) + offset
+    key = value = int(keys1.max() + keys2.min()) // 2
+    self = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+    other = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+
+    self.join(other, key, value)
 
 
 def test_split_cases():
@@ -212,7 +207,7 @@ def test_split_cases():
     keys = list(range(0, 100, 2))
     for key in range(-2, max(keys) + 2):
         self = AVLTree(list(zip(keys, keys)))
-        tree1, tree2, b = split_avl_tree(self, key)
+        tree1, tree2, b = avl_split_tree(self, key)
         try:
             assert b == (key in keys)
             keys1 = np.array(list(tree1.keys()))
@@ -232,21 +227,6 @@ def test_split_cases():
             raise
 
 
-def split_avl_tree(self, key):
-    t = self._root
-    t1, b, t2 = split(t, key)
-    # print('t1 = %r' % (t1,))
-    # print('t2 = %r' % (t2,))
-    tree1 = AVLTree()
-    tree1._root = t1
-    tree1._count = 0 if t1 is None else -1  # FIXME
-
-    tree2 = AVLTree()
-    tree2._root = t2
-    tree2._count = 0 if t2 is None else -1  # FIXME
-    return tree1, tree2, b
-
-
 def speed_test():
     """
     CommandLine:
@@ -257,7 +237,7 @@ def speed_test():
     import numpy as np
     import utool as ut
     low = 1000
-    high = 1000
+    high = 10000
     keys1 = np.arange(low)
     keys2 = np.arange(high) + 2 * low
     key = value = int(keys1.max() + keys2.min()) // 2
@@ -265,12 +245,59 @@ def speed_test():
     # other = AVLTree(list(zip(keys2, keys2)))
     import bintrees
 
+    # Test Join - Assume disjoint
     for n in [1, 10]:
-        for timer in ut.Timerit(n, 'NEW union with join', verbose=n > 1):
+        print('--------------------------')
+        verbose = n > 0
+        for timer in ut.Timerit(n, 'new CPython avl_join', verbose=verbose):
+            self1  = bintrees.AVLTree(list(zip(keys1, keys1)))
+            other1 = bintrees.AVLTree(list(zip(keys2, keys2)))
+            with timer:
+                new1 = self1.join(other1, key, value)
+
+        for timer in ut.Timerit(n, 'new Cython avl_join', verbose=verbose):
+            self3  = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+            other3 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+            with timer:
+                new3 = self3.join(other3, key, value)
+        try:
+            assert set(new3) == set(new1)
+        except AssertionError:
+            ascii_tree(new1)
+            ascii_tree(new3)
+            print(ut.repr4(ut.set_overlaps(set(new1), set(new3))))
+            print(ut.repr4(ut.set_overlaps(set(new1), set(self3))))
+            print(ut.repr4(ut.set_overlaps(set(new1), set(other3))))
+            # print(set(new3) - set(new1))
+            raise
+
+        for timer in ut.Timerit(n, 'old CPython join (as update)', verbose=verbose):
+            self2  = bintrees.AVLTree(list(zip(keys1, keys1)))
+            other2 = bintrees.AVLTree(list(zip(keys2, keys2)))
+            with timer:
+                self2.update(other2)
+                new2 = self2
+                new2[key] = value
+        assert set(new2) == set(new1)
+
+        for timer in ut.Timerit(n, 'old Cython join (as update)', verbose=verbose):
+            self2  = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+            other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+            with timer:
+                self2.update(other2)
+                new2 = self2
+                new2[key] = value
+        assert set(new2) == set(new1)
+
+    return
+
+    # Test Union - General sets
+    for n in [1, 10]:
+        for timer in ut.Timerit(n, 'NEW avl_union with avl_join', verbose=n > 1):
             self1  = AVLTree(list(zip(keys1, keys1)))
             other1 = AVLTree(list(zip(keys2, keys2)))
             with timer:
-                new1 = union_avl_trees(self1, other1)
+                new1 = avl_tree_union(self1, other1)
 
         for timer in ut.Timerit(n, 'ORIG fast union', verbose=n > 1):
             self2  = bintrees.FastAVLTree(list(zip(keys1, keys1)))
@@ -290,22 +317,6 @@ def speed_test():
         except AssertionError:
             print(ut.repr4(ut.set_overlaps(set(new1), set(new2))))
 
-    # Assume disjoint
-    for n in [1, 10]:
-        for timer in ut.Timerit(n, 'disjoint key join', verbose=n > 1):
-            self1  = AVLTree(list(zip(keys1, keys1)))
-            other1 = AVLTree(list(zip(keys2, keys2)))
-            with timer:
-                new1 = join_avl_trees(self1, other1, key, value)
-
-        for timer in ut.Timerit(n, 'original key union2', verbose=n > 1):
-            self2  = AVLTree(list(zip(keys1, keys1)))
-            other2 = AVLTree(list(zip(keys2, keys2)))
-            with timer:
-                new2 = self2.union(other2)
-                new2[key] = value
-        assert set(new2) == set(new1)
-
 
 def traverse_avl_nodes(root):
     stack = []
@@ -321,6 +332,27 @@ def traverse_avl_nodes(root):
             # yield node
             node = node.right
     return yielder
+
+
+def ascii_tree(root):
+    if hasattr(root, '_root'):
+        root = root._root
+    yielder = []
+    queue = [root]
+    while queue:
+        node = queue.pop(0)
+        if node is None:
+            yielder.append(None)
+        else:
+            yielder.append(node)
+            queue.append(node.left)
+            queue.append(node.right)
+    sequence = ['#' if n is None else str(n.key) for n in yielder]
+    code = ','.join(sequence)
+    # code = code.rstrip('#')
+    import drawtree
+    drawtree.draw_level_order('{' + code + '}')
+    print([(n.key, n.balance) for n in yielder if n is not None])
 
 
 def to_networkx(self, labels=['key', 'value']):
@@ -348,11 +380,98 @@ def to_networkx(self, labels=['key', 'value']):
     return graph
 
 
+def avl_tree_join(self, other, key, value):
+    """
+    Returns all elements from t1 and t2 as well as (key, val)
+    assert that t1.max() < key < t2.min()
+
+    Running time:
+        O(|height(t1) − height(t2)|)
+
+    References:
+        Just Join for Parallel Ordered Sets
+        https://dx.doi.org/10.1145%2F2935764.2935768
+        https://i.cs.hku.hk/~provinci/training2016/notes2.pdf
+
+    CommandLine:
+        python -m bintrees.avltree avl_tree_join --show
+
+    Example:
+        >>> # DISABLE_DOCTEST
+        >>> from bintrees.avltree import *  # NOQA
+        >>> import utool as ut
+        >>> import numpy as np
+        >>> left = 1
+        >>> lowhigh = [1, 3]
+        >>> keys1 = np.arange(lowhigh[1 - left])
+        >>> keys2 = np.arange(lowhigh[left]) + 100
+        >>> self  = AVLTree(list(zip(keys1, keys1)))
+        >>> other = AVLTree(list(zip(keys2, keys2)))
+        >>> key = value = int(keys1.max() + keys2.min()) // 2
+        >>> t1 = self._root
+        >>> t2 = other._root
+        >>> new = avl_tree_join(self.copy(), other.copy(), key, value)
+        >>> import plottool as pt
+        >>> pt.qt4ensure()
+        >>> #graph = to_networkx(self, ['key', 'balance'])
+        >>> #pt.show_nx(graph, fnum=1, pnum=None)
+        >>> labels = ['key', 'balance']
+        >>> _ = pt.show_nx(to_networkx(self, labels), fnum=1, pnum=(2, 2, (0, 0)))
+        >>> _ = pt.show_nx(to_networkx(other, labels), fnum=1, pnum=(2, 2, (1, 0)))
+        >>> _ = pt.show_nx(to_networkx(new, labels), fnum=1, pnum=(2, 2, (slice(0, 2), 1)))
+        >>> ut.show_if_requested()
+    """
+    minceil_key = -float('inf') if self.is_empty() else self.max_key()
+    maxfloor_key = float('inf') if other.is_empty() else other.min_key()
+    if not (minceil_key < key and key < maxfloor_key):
+        raise ValueError('invalid avl_tree_join args %r < %r < %r' % (
+            minceil_key, key, maxfloor_key))
+    t1 = self._root
+    t2 = other._root
+    new_count = self._count + other._count + 1
+    top = avl_join(t1, t2, key, value)
+    # Two trees are now joined inplace
+    self._root = top
+    self._count = new_count
+    # self assimilates all values from other
+    other._root = None
+    other._count = 0
+    return self
+
+
+def avl_split_tree(self, key):
+    t = self._root
+    t1, b, t2 = avl_split(t, key)
+    # print('t1 = %r' % (t1,))
+    # print('t2 = %r' % (t2,))
+    tree1 = AVLTree()
+    tree1._root = t1
+    tree1._count = 0 if t1 is None else -1  # FIXME
+
+    tree2 = AVLTree()
+    tree2._root = t2
+    tree2._count = 0 if t2 is None else -1  # FIXME
+    return tree1, tree2, b
+
+
+def avl_tree_union(self, other):
+    """
+    Inplace avl_union
+    """
+    t1 = self._root
+    t2 = other._root
+    top = avl_union(t1, t2)
+    # Two trees are now unioned inplace
+    self._root = other._root = top
+    self._count = other._count = self._count + other._count
+    return self
+
+
 def height(node):
     return node.balance if node is not None else -1
 
 
-def rotate_single(root, direction):
+def avl_rotate_single(root, direction):
     """
     Single rotation, either 0 (left) or 1 (right).
 
@@ -377,7 +496,7 @@ def rotate_single(root, direction):
     return save
 
 
-def rotate_double(root, direction):
+def avl_rotate_double(root, direction):
     """
     Double rotation, either 0 (left) or 1 (right).
 
@@ -391,28 +510,25 @@ def rotate_double(root, direction):
            c          c
     """
     other_side = 1 - direction
-    root[other_side] = rotate_single(root[other_side], other_side)
-    return rotate_single(root, direction)
+    root[other_side] = avl_rotate_single(root[other_side], other_side)
+    return avl_rotate_single(root, direction)
 
 
-def expose(t):
-    return t.left, t.key, t.value, t.right
-
-
-def union_avl_trees(self, other):
+def avl_new_top(t1, t2, key, value, direction=0):
     """
-    Inplace union
+    if direction == 0:
+        (t1, t2) is (left, right)
+    if direction == 1:
+        (t1, t2) is (right, left)
     """
-    t1 = self._root
-    t2 = other._root
-    top = union(t1, t2)
-    # Two trees are now unioned inplace
-    self._root = other._root = top
-    self._count = other._count = self._count + other._count
-    return self
+    top = Node(key, value)
+    top[direction] = t1
+    top[1 - direction] = t2
+    top.balance = max(height(t1), height(t2)) + 1
+    return top
 
 
-def union(t1, t2):
+def avl_union(t1, t2):
     """
     Should take O(m log(n/m + 1)). Instead of O(m log(n))
     This is sublinear (good)
@@ -424,17 +540,13 @@ def union(t1, t2):
     else:
         l2, r2 = t2.left, t2.right
         k2, v2 = t2.key, t2.value
-        l1, b, r1 = split(t1, k2)
-        tl = union(l1, l2)
-        tr = union(r1, r2)
-        return join(tl, tr, k2, v2)
+        l1, b, r1 = avl_split(t1, k2)
+        tl = avl_union(l1, l2)
+        tr = avl_union(r1, r2)
+        return avl_join(tl, tr, k2, v2)
 
 
-def is_leaf(t):
-    return t.left is None and t.right is None
-
-
-def split(t, key):
+def avl_split(t, key):
     """
     Args:
         t (Node): tree node
@@ -446,8 +558,7 @@ def split(t, key):
             b is a flag indicating if key in t
             tr contains all keys in t that are greater than key
     """
-    # TODO: keep track of the size of the sets being split if possible
-    # if is_leaf(t):
+    # TODO: keep track of the size of the sets being avl_split if possible
     if t is None:
         return (t, False, t)
     else:
@@ -457,22 +568,14 @@ def split(t, key):
         if key == t_key:
             return (l, True, r)
         elif key < t_key:
-            ll, b, lr = split(l, key)
-            return (ll, b, join(lr, r, t_key, t_val))
+            ll, b, lr = avl_split(l, key)
+            return (ll, b, avl_join(lr, r, t_key, t_val))
         else:
-            rl, b, rr = split(r, key)
-            return (join(l, rl, t_key, t_val), b, rr)
+            rl, b, rr = avl_split(r, key)
+            return (avl_join(l, rl, t_key, t_val), b, rr)
 
 
-def new_top(left, right, key, value, direction=0):
-    top = Node(key, value)
-    top[direction] = left
-    top[1 - direction] = right
-    top.balance = max(height(left), height(right)) + 1
-    return top
-
-
-def node_insert(root, key, value):
+def avl_insert(root, key, value):
     node_stack = []  # node stack
     dir_stack = array('I')  # direction stack
     done = False
@@ -511,9 +614,9 @@ def node_insert(root, key, value):
 
             # Determine which rotation is required
             if height(a) >= height(b):
-                node_stack[top] = rotate_single(top_node, other_side)
+                node_stack[top] = avl_rotate_single(top_node, other_side)
             else:
-                node_stack[top] = rotate_double(top_node, other_side)
+                node_stack[top] = avl_rotate_double(top_node, other_side)
 
             # Fix parent
             if top != 0:
@@ -532,29 +635,29 @@ def node_insert(root, key, value):
     return root
 
 
-def join(t1, t2, key, value):
-    """ Executes a join on avl nodes """
+def avl_join(t1, t2, key, value):
+    """ Executes a avl_join on avl nodes """
     if t1 is None and t2 is None:
-        return new_top(None, None, key, value)
+        return avl_new_top(None, None, key, value, 0)
     elif t1 is None:
         # FIXME keep track of count if possible
-        return node_insert(t2, key, value)
+        return avl_insert(t2, key, value)
     elif t2 is None:
-        return node_insert(t1, key, value)
+        return avl_insert(t1, key, value)
 
     h1 = height(t1)
     h2 = height(t2)
     if h1 > h2 + 1:
-        top = join_dir(t1, t2, key, value, 1)
+        top = avl_join_dir(t1, t2, key, value, 1)
     elif h2 > h1 + 1:
-        top = join_dir(t1, t2, key, value, 0)
+        top = avl_join_dir(t1, t2, key, value, 0)
     else:
         # Insert at the top of the tree
-        top = new_top(t1, t2, key, value)
+        top = avl_new_top(t1, t2, key, value, 0)
     return top
 
 
-def join_dir_recursive(t1, t2, key, value, direction):
+def avl_join_dir_recursive(t1, t2, key, value, direction):
     """
     Recursive version of join_left and join_right
     TODO: make this iterative using a stack
@@ -576,45 +679,28 @@ def join_dir_recursive(t1, t2, key, value, direction):
     hrest = height(rest)
 
     if hspine <= hsmall + 1:
-        t_ = new_top(small, spine, key, value, direction)
+        t_ = avl_new_top(small, spine, key, value, direction)
         if height(t_) <= hrest + 1:
-            return new_top(t_, rest, k_, v_, direction)
+            return avl_new_top(t_, rest, k_, v_, direction)
         else:
             # Double rotation, but with a new node
-            t_rotate = rotate_single(t_, direction)
-            t_merge = new_top(rest, t_rotate, k_, v_, 0)
-            return rotate_single(t_merge, other_side)
+            t_rotate = avl_rotate_single(t_, direction)
+            t_merge = avl_new_top(rest, t_rotate, k_, v_, 0)
+            return avl_rotate_single(t_merge, other_side)
     else:
         # Traverse down the spine in the appropriate direction
         if direction == 0:
-            t_ = join_dir(small, spine, key, value, direction)
+            t_ = avl_join_dir_recursive(small, spine, key, value, direction)
         elif direction == 1:
-            t_ = join_dir(spine, t2, key, value, direction)
-        t__ = new_top(t_, rest, k_, v_, direction)
+            t_ = avl_join_dir_recursive(spine, t2, key, value, direction)
+        t__ = avl_new_top(t_, rest, k_, v_, direction)
         if height(t_) <= hrest + 1:
             return t__
         else:
-            return rotate_single(t__, other_side)
+            return avl_rotate_single(t__, other_side)
 
 
-join_dir = join_dir_recursive
-
-
-# def split_last(t):
-#     l, k, v, r = expose(t)
-#     if is_leaf(r):
-#         (l, k)
-#     else:
-#         t_, k_ = split_last(r)
-#         (join(l, k, t_), k_)
-
-
-# def join2(t1, t2):
-#     if t1.left is None and t2.right is None:
-#         t2
-#     else:
-#         t1_, k = split_last(t1)
-#         join(t1_, k, t2)
+avl_join_dir = avl_join_dir_recursive
 
 
 class AVLTree(ABCTree):
@@ -689,9 +775,9 @@ class AVLTree(ABCTree):
 
                     # Determine which rotation is required
                     if height(a) >= height(b):
-                        node_stack[top] = rotate_single(top_node, other_side)
+                        node_stack[top] = avl_rotate_single(top_node, other_side)
                     else:
-                        node_stack[top] = rotate_double(top_node, other_side)
+                        node_stack[top] = avl_rotate_double(top_node, other_side)
 
                     # Fix parent
                     if top != 0:
@@ -791,15 +877,20 @@ class AVLTree(ABCTree):
                     b = top_node[other_side][other_side]
                     # Determine which rotation is required
                     if height(a) <= height(b):
-                        node_stack[top] = rotate_single(top_node, direction)
+                        node_stack[top] = avl_rotate_single(top_node,
+                                                            direction)
                     else:
-                        node_stack[top] = rotate_double(top_node, direction)
+                        node_stack[top] = avl_rotate_double(top_node,
+                                                            direction)
                     # Fix parent
                     if top != 0:
                         node_stack[top - 1][dir_stack[top - 1]] = node_stack[top]
                     else:
                         self._root = node_stack[0]
                 top -= 1
+
+    def join(self, other, key, value):
+        return avl_tree_join(self, other, key, value)
 
 
 if __name__ == '__main__':

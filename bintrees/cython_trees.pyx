@@ -204,6 +204,60 @@ cdef class _BaseTree:
                 node = stack.pop()
                 func(<object>node.key, <object>node.value)
 
+    def _traverse_nodes(self):
+        """
+        Traverses nodes for debugging
+        """
+        node = self._root
+        stack = []
+        yielder = []
+        while stack or node is not None:
+            if node is not None:
+                stack.append(node)
+                node = node.left
+            else:
+                node = stack.pop()
+                yielder += [node]
+                # yield node
+                node = node.right
+        return yielder
+
+    @property
+    def _root(self):
+        return _create_dummy_node(<node_t*> self.root)
+
+
+class DummyNode(object):
+    def __init__(self):
+        self.key = None
+        self.value = None
+        self.xdata = None
+        self.left = None
+        self.right = None
+
+    @property
+    def balance(self):
+        return self.xdata
+
+    @balance.setter
+    def balance(self, value):
+        self.xdata = value
+
+
+
+
+cdef _create_dummy_node(node_t *root):
+    if root == NULL:
+        return None
+    else:
+        node = DummyNode()
+        node.key = <object>root.key
+        node.value = <object>root.value
+        node.xdata = <int>root.xdata
+        node.left = _create_dummy_node(root.link[0])
+        node.right = _create_dummy_node(root.link[1])
+        return node
+
 
 cdef class _BinaryTree(_BaseTree):
     def insert(self, key, value):
@@ -239,6 +293,22 @@ cdef class _AVLTree(_BaseTree):
             raise KeyError(str(key))
         else:
             self.count -= 1
+
+    def join(self, other, key, value):
+        minceil_key = -float('inf') if self.is_empty() else self.max_key()
+        maxfloor_key = float('inf') if other.is_empty() else other.min_key()
+        if not (minceil_key < key and key < maxfloor_key):
+            raise ValueError('invalid avl_tree_join args %r < %r < %r' % (
+                minceil_key, key, maxfloor_key))
+        # cdef node_t *t1 = self.root
+        # cdef node_t *t2 = (<_AVLTree> other).root
+        avl_tree_join(&self.root, &(<_AVLTree> other).root, key, value)
+        # Two trees are now joined inplace
+        # self._root = other._root = top
+        new_count = self.count + other.count + 1
+        self.count = new_count
+        (<_AVLTree> other).count = 0
+        return self
 
 
 class FastAVLTree(_AVLTree, _ABCTree):

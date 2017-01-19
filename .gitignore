@@ -80,3 +80,18 @@ test_times.txt
 .hg*
 
 bintrees/cython_trees.c
+syntax: glob
+build/*
+dist/*
+.tox/*
+.idea/*
+*.so
+*.o
+*.pyd
+*.err
+*.orig
+*.bak
+*.pyc
+*.*~
+*.wpr
+MANIFEST

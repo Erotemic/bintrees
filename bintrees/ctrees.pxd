@@ -13,6 +13,7 @@ cdef extern from "ctrees.h":
         node_t *link[2]
         PyObject *key
         PyObject *value
+        int xdata;
 
     int ct_compare(object key1, object key2)
     void ct_delete_tree(node_t *root)
@@ -32,6 +33,7 @@ cdef extern from "ctrees.h":
     int ct_bintree_insert(node_t **root, object key, object value)
     int ct_bintree_remove(node_t **root, object key)
     # avl-tree functions
+    int avl_tree_join(node_t **root1, node_t **root2, object key, object value)
     int avl_insert(node_t **root, object key, object value)
     int avl_remove(node_t **root, object key)
     # rb-tree functions

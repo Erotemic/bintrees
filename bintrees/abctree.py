@@ -771,6 +771,21 @@ class CPYTHON_ABCTree(_ABCTree):
                     node = stack.pop()
                     go_left = False
 
+    def _traverse_nodes(self):
+        node = self._root
+        stack = []
+        yielder = []
+        while stack or node is not None:
+            if node is not None:
+                stack.append(node)
+                node = node.left
+            else:
+                node = stack.pop()
+                yielder += [node]
+                # yield node
+                node = node.right
+        return yielder
+
     def _get_in_range_func(self, start_key, end_key):
         if start_key is None and end_key is None:
             return lambda x: True

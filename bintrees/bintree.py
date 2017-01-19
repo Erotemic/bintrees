@@ -23,6 +23,10 @@ class Node(object):
         self.left = None
         self.right = None
 
+    @property
+    def xdata(self):
+        return None
+
     def __getitem__(self, key):
         """N.__getitem__(key) <==> x[key], where key is 0 (left) or 1 (right)."""
         return self.left if key == 0 else self.right

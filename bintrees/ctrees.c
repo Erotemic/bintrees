@@ -478,8 +478,8 @@ rb_remove(node_t **rootaddr, PyObject *key)
 static node_t *
 avl_single(node_t *root, int dir)
 {
-  node_t *save = root->link[!dir];
-	int rlh, rrh, slh;
+    node_t *save = root->link[!dir];
+    int rlh, rrh, slh;
 
 	/* Rotate */
 	root->link[!dir] = save->link[dir];
@@ -503,6 +503,141 @@ avl_double(node_t *root, int dir)
 	return avl_single(root, dir);
 }
 
+
+static node_t *
+avl_new_top(node_t *t1, node_t *t2, PyObject *key, PyObject *value, int dir)
+{
+    node_t *node = avl_new_node(key, value);
+    node->link[dir] = t1;
+    node->link[1 - dir] = t2;
+    BALANCE(node) = avl_max(height(t1), height(t2)) + 1;
+    return node;
+}
+
+static node_t *
+avl_join_dir_recursive(node_t *t1, node_t *t2, 
+                       PyObject *key, PyObject *value,
+                       int dir)
+{
+    int other_side;
+    node_t *large, *small, *spine, *rest;
+    PyObject *k_, *v_;
+    int hsmall, hspine, hrest;
+    node_t *t_rotate, *t_merge, *t_, *t__;
+    other_side = 1 - dir;
+
+    if (dir == 0) {
+        large = t2;
+        small = t1;
+    }
+    else {
+        large = t1;
+        small = t2;
+    }
+
+    // Follow the spine of the larger tree
+    spine = large->link[dir];
+    rest = large->link[other_side];
+    k_ = KEY(large);
+    v_ = VALUE(large);
+
+    hsmall = height(small);
+    hspine = height(spine);
+    hrest = height(rest);
+
+    if (hspine <= hsmall + 1) {
+        t_ = avl_new_top(small, spine, key, value, dir);
+        if (height(t_) <= hrest + 1) {
+            return avl_new_top(t_, rest, k_, v_, dir);
+        }
+        else {
+            // Double rotation, but with a new node
+            t_rotate = avl_single(t_, dir);
+            t_merge = avl_new_top(rest, t_rotate, k_, v_, 0);
+            return avl_single(t_merge, other_side);
+        }
+    }
+    else {
+        // Traverse down the spine in the appropriate dir
+        if (dir == 0) {
+            t_ = avl_join_dir_recursive(small, spine, key, value, dir);
+        }
+        else {
+            t_ = avl_join_dir_recursive(spine, t2, key, value, dir);
+        }
+        t__ = avl_new_top(t_, rest, k_, v_, dir);
+        if (height(t_) <= hrest + 1){
+            return t__;
+        }
+        else{
+            return avl_single(t__, other_side);
+        }
+    }
+}
+
+
+#define avl_join_dir avl_join_dir_recursive
+
+
+static node_t *
+avl_join(node_t *t1, node_t *t2, PyObject *key, PyObject *value)
+{
+    int h1, h2;
+    node_t **topaddr;
+    node_t *top;
+    if (t1 == NULL && t2 == NULL) {
+        /*printf("Case 1\n");*/
+        top = avl_new_top(NULL, NULL, key, value, 0);
+    }
+    else if (t1 == NULL) {
+        /*printf("Case 2\n");*/
+        // FIXME keep track of count if possible
+        topaddr = &t2;
+        avl_insert(topaddr, key, value);
+        top = *topaddr;
+    }
+    else if (t2 == NULL) {
+        /*printf("Case 3\n");*/
+        topaddr = &t1;
+        avl_insert(&t1, key, value);
+        top = *topaddr;
+    }
+    else {
+        h1 = height(t1);
+        h2 = height(t2);
+        if (h1 > h2 + 1) {
+            /*printf("Case 5\n");*/
+            top = avl_join_dir(t1, t2, key, value, 1);
+        }
+        else if (h2 > h1 + 1) {
+            /*printf("Case 6\n");*/
+            top = avl_join_dir(t1, t2, key, value, 0);
+        }
+        else {
+            /*printf("Case 7\n");*/
+            // Insert at the top of the tree
+            top = avl_new_top(t1, t2, key, value, 0);
+        }
+    }
+    return top;
+}
+
+
+extern int
+avl_tree_join(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value)
+{
+    node_t *top;
+    top = avl_join(*t1_addr, *t2_addr, key, value);
+    // Reassign root value item
+	(*t1_addr) = top;
+    // The nodes in t2 have been assimilated into t1. 
+    // t2 should no longer contain any values
+	(*t2_addr) = NULL;
+    return 0;
+}
+
+
+
 extern int
 avl_insert(node_t **rootaddr, PyObject *key, PyObject *value)
 {
@@ -525,6 +660,7 @@ avl_insert(node_t **rootaddr, PyObject *key, PyObject *value)
 			/* Push direction and node onto stack */
 			cmp_res = ct_compare(KEY(it), key);
 			if (cmp_res == 0) {
+                // update existing item
 				Py_XDECREF(VALUE(it)); // release old value object
 				VALUE(it) = value; // set new value object
 				Py_INCREF(value); // take new value object
@@ -561,6 +697,7 @@ avl_insert(node_t **rootaddr, PyObject *key, PyObject *value)
 				node_t *a = up[top]->link[upd[top]]->link[upd[top]];
 				node_t *b = up[top]->link[upd[top]]->link[!upd[top]];
 
+                // Determine which rotation is required
 				if (height( a ) >= height( b ))
 					up[top] = avl_single(up[top], !upd[top]);
 				else
