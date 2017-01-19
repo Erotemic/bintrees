@@ -122,4 +122,3 @@ class BinaryTree(ABCTree):
                     node = node[direction]
                     if node is None:
                         raise KeyError(str(key))
-
