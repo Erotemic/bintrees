@@ -281,17 +281,33 @@ def join_left(t1, t2, key, value):
     return retvar
 
 
-DEBUG = 2
+# DEBUG = 1
+
+def join(t1, t2, key, value):
+    h1 = height(t1)
+    h2 = height(t2)
+    if h1 > h2 + 1:
+        top = join_dir(t1, t2, key, value, 1)
+    elif h2 > h1 + 1:
+        top = join_dir(t1, t2, key, value, 0)
+    else:
+        # Insert at the top of the tree
+        top = new_top(t1, t2, key, value)
+    return top
 
 
 def join_dir(t1, t2, key, value, direction):
-    debug = DEBUG
-    if debug > 1:
-        print('Join')
-        print('Input: t1')
-        ascii_tree(t1)
-        print('Input: t2')
-        ascii_tree(t2)
+    """
+    Recursive version of join_left and join_right
+    TODO: make this iterative using a stack
+    """
+    # debug = DEBUG
+    # if debug > 1:
+    #     print('Join')
+    #     print('Input: t1')
+    #     ascii_tree(t1)
+    #     print('Input: t2')
+    #     ascii_tree(t2)
 
     other_side = 1 - direction
 
@@ -312,19 +328,19 @@ def join_dir(t1, t2, key, value, direction):
     if hspine <= hsmall + 1:
         t_ = new_top(small, spine, key, value, direction)
         if height(t_) <= hrest + 1:
-            if debug:
-                ut.cprint('Case1', 'red')
+            # if debug:
+            #     ut.cprint('Case1', 'red')
             retvar = new_top(t_, rest, k_, v_, direction)
         else:
-            if debug:
-                ut.cprint('Case2', 'red')
+            # if debug:
+            #     ut.cprint('Case2', 'red')
             # Double rotation, but with a new node
             t_rotate = rotate_single(t_, direction)
             tmp = new_top(rest, t_rotate, k_, v_, 0)
             retvar = rotate_single(tmp, other_side)
     else:
-        if debug:
-            ut.cprint('CaseR', 'red')
+        # if debug:
+        #     ut.cprint('CaseR', 'red')
         # Traverse down the spine in the appropriate direction
         if direction == 0:
             t_ = join_dir(small, spine, key, value, direction)
@@ -332,46 +348,18 @@ def join_dir(t1, t2, key, value, direction):
             t_ = join_dir(spine, t2, key, value, direction)
         t__ = new_top(t_, rest, k_, v_, direction)
         if height(t_) <= hrest + 1:
-            if debug:
-                ut.cprint('Case3', 'red')
+            # if debug:
+            #     ut.cprint('Case3', 'red')
             retvar = t__
         else:
-            if debug:
-                ut.cprint('Case4', 'red')
-            print('Pre-4')
-            ascii_tree(t__)
+            # if debug:
+            #     ut.cprint('Case4', 'red')
             retvar = rotate_single(t__, other_side)
-    if debug > 1:
-        print('++++')
-        print('Retvar:')
-        ascii_tree(retvar)
+    # if debug > 1:
+    #     print('++++')
+    #     print('Retvar:')
+    #     ascii_tree(retvar)
     return retvar
-
-
-def assert_avl_invariants(tree):
-    for node in traverse_avl_nodes(tree._root):
-        h1 = height(node.left)
-        h2 = height(node.right)
-        balance_factor = h1 - h2
-        if abs(balance_factor) > 1:
-            print('ERROR')
-            ascii_tree(tree._root)
-            print('node.key = %r' % (node.key,))
-            print('node.left = %r' % (node.left,))
-            print('node.right = %r' % (node.right,))
-            print('h1 = %r' % (h1,))
-            print('h2 = %r' % (h2,))
-            print('balance_factor = %r' % (balance_factor,))
-            raise AssertionError('Failed balance invariant')
-
-    inorder_keys = [node.key for node in traverse_avl_nodes(tree._root)]
-
-    if sorted(inorder_keys) != inorder_keys:
-        print('inorder_keys = %r' % (inorder_keys,))
-        raise AssertionError('Failed order invariant')
-
-    if tree.count != len(inorder_keys):
-        raise AssertionError('count is inaccurate')
 
 
 def test_join_cases():
@@ -384,35 +372,64 @@ def test_join_cases():
     lowhigh_cases = [
         [1, 3],
         [1, 10],
-        # [1, 9],
-        # [3, 9],
-        # [2, 3],
-        # [3, 32],
+        [1, 9],
+        [3, 9],
+        [2, 3],
+        [3, 32],
     ]
-    # n = 3
-    # for x in [1, 2]:
-    #     for y in range(2 ** n):
-    #         lowhigh_cases += [[x, 2 ** n + y]]
+    # Exhaustively test that merging trees works
+    n = 4
+    for x in range(1, 2 ** n):
+        for y in range(1, 2 ** n):
+            lowhigh_cases += [[x, 2 ** n + y]]
 
-    test_cases = ut.product([0, 1], lowhigh_cases)
-    for direction, lowhigh in test_cases:
+    offset = max(map(max, lowhigh_cases)) * 2
+    directions = [0, 1]
+
+    def assert_avl_invariants(tree):
+        for node in traverse_avl_nodes(tree._root):
+            h1 = height(node.left)
+            h2 = height(node.right)
+            balance_factor = h1 - h2
+            if abs(balance_factor) > 1:
+                print('ERROR')
+                ascii_tree(tree._root)
+                print('node.key = %r' % (node.key,))
+                print('node.left = %r' % (node.left,))
+                print('node.right = %r' % (node.right,))
+                print('h1 = %r' % (h1,))
+                print('h2 = %r' % (h2,))
+                print('balance_factor = %r' % (balance_factor,))
+                raise AssertionError('Failed balance invariant')
+
+        inorder_keys = [node.key for node in traverse_avl_nodes(tree._root)]
+
+        if sorted(inorder_keys) != inorder_keys:
+            print('inorder_keys = %r' % (inorder_keys,))
+            raise AssertionError('Failed order invariant')
+
+        if tree.count != len(inorder_keys):
+            raise AssertionError('count is inaccurate')
+
+    test_cases = list(ut.product(directions, lowhigh_cases))
+    for direction, lowhigh in ut.ProgIter(test_cases, label='test join'):
         keys1 = np.arange(lowhigh[direction])
-        keys2 = np.arange(lowhigh[1 - direction]) + 100
+        keys2 = np.arange(lowhigh[1 - direction]) + offset
         key = value = int(keys1.max() + keys2.min()) // 2
         self  = AVLTree(list(zip(keys1, keys1)))
         other = AVLTree(list(zip(keys2, keys2)))
-        debug = DEBUG
-        if debug:
-            ut.cprint('==========', 'yellow')
-            if debug > 1:
-                print('direction = %r' % (direction,))
-                print('lowhigh = %r' % (lowhigh,))
-                print('key = %r' % (key,))
+        # debug = DEBUG
+        # if debug:
+        #     ut.cprint('==========', 'yellow')
+        #     if debug > 0:
+        #         print('direction = %r' % (direction,))
+        #         print('lowhigh = %r' % (lowhigh,))
+        #         print('key = %r' % (key,))
         new = join(self, other, key, value)
         assert_avl_invariants(new)
 
 
-def join(self, other, key, value):
+def join_avl_trees(self, other, key, value):
     """
     Returns all elements from t1 and t2 as well as (key, val)
     assert that t1.max() < key < t2.min()
@@ -426,7 +443,7 @@ def join(self, other, key, value):
         https://i.cs.hku.hk/~provinci/training2016/notes2.pdf
 
     CommandLine:
-        python -m bintrees.avltree join
+        python -m bintrees.avltree join_avl_trees
 
     Example:
         >>> # DISABLE_DOCTEST
@@ -441,7 +458,7 @@ def join(self, other, key, value):
         >>> key = value = int(keys1.max() + keys2.min()) // 2
         >>> t1 = self._root
         >>> t2 = other._root
-        >>> new = join(self.copy(), other.copy(), key, value)
+        >>> new = join_avl_trees(self.copy(), other.copy(), key, value)
         >>> import plottool as pt
         >>> pt.qt4ensure()
         >>> #graph = to_networkx(self, ['key', 'balance'])
@@ -451,27 +468,15 @@ def join(self, other, key, value):
         >>> _ = pt.show_nx(to_networkx(other, labels), fnum=1, pnum=(2, 2, (1, 0)))
         >>> _ = pt.show_nx(to_networkx(new, labels), fnum=1, pnum=(2, 2, (slice(0, 2), 1)))
     """
-    assert self.max_key() < key and key < other.min_key()
+    minceil_key = self.max_key()
+    maxfloor_key = other.min_key()
+
+    if not (minceil_key < key and key < maxfloor_key):
+        raise ValueError('invalid join_avl_trees args %r < %r < %r' % (
+            minceil_key, key, maxfloor_key))
     t1 = self._root
     t2 = other._root
-    h1 = height(t1)
-    h2 = height(t2)
-    debug = DEBUG
-    if h1 > h2 + 1:
-        if debug:
-            ut.cprint('right_joincase', 'green')
-        top = join_dir(t1, t2, key, value, 1)
-    elif h2 > h1 + 1:
-        if debug:
-            ut.cprint('left_joincase', 'green')
-        top = join_dir(t1, t2, key, value, 0)
-    else:
-        if debug:
-            ut.cprint('mid_joincase', 'green')
-        # Insert at the top of the tree
-        top = new_top(t1, t2, key, value)
-    # print('New Top')
-    # ascii_tree(top)
+    top = join(t1, t2, key, value)
     # Two trees are now joined inplace
     self._root = other._root = top
     self._count = other._count = self._count + other._count + 1

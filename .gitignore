@@ -78,3 +78,5 @@ test_times.txt
 
 
 .hg*
+
+bintrees/cython_trees.c
