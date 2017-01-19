@@ -191,99 +191,8 @@ def traverse_avl_nodes(root):
     return yielder
 
 
-def ascii_tree(root):
-    yielder = []
-    queue = [root]
-    while queue:
-        node = queue.pop(0)
-        if node is None:
-            yielder.append(None)
-        else:
-            yielder.append(node)
-            queue.append(node.left)
-            queue.append(node.right)
-    sequence = ['#' if n is None else str(n.key) for n in yielder]
-    code = ','.join(sequence)
-    # code = code.rstrip('#')
-    import drawtree
-    drawtree.draw_level_order('{' + code + '}')
-    print([(n.key, n.balance) for n in yielder if n is not None])
-    # return
-    # return yielder
-
-
-def join_right(t1, t2, key, value):
-    print('Join Right')
-    print('Input: t1')
-    ascii_tree(t1)
-    print('Input: t2')
-    ascii_tree(t2)
-    # t1 is large
-    # t2 is small
-    l, c = t1.left, t1.right
-    k_, v_ = t1.key, t1.value
-
-    if height(c) <= height(t2) + 1:
-        t_ = new_top(c, t2, key, value)
-        if height(t_) <= height(l) + 1:
-            ut.cprint('Case1', 'red')
-            retvar = new_top(l, t_, k_, v_)
-        else:
-            ut.cprint('Case2', 'red')
-            t_rotate = rotate_single(t_, 1)
-            tmp = new_top(l, t_rotate, k_, v_)
-            out = rotate_single(tmp, 0)
-            retvar = out
-    else:
-        t_ = join_right(c, t2, key, value)
-        t__ = new_top(l, t_, k_, v_)
-        if height(t_) <= height(l) + 1:
-            ut.cprint('Case3', 'red')
-            retvar  = t__
-        else:
-            ut.cprint('Case4', 'red')
-            retvar = rotate_single(t__, 0)
-    return retvar
-
-
-def join_left(t1, t2, key, value):
-    print('Join Left')
-    print('Input: t1')
-    ascii_tree(t1)
-    print('Input: t2')
-    ascii_tree(t2)
-    # t1 is small
-    # t2 is large
-    c, l = t2.left, t2.right
-    k_, v_ = t2.key, t2.value
-
-    if height(c) <= height(t1) + 1:
-        t_ = new_top(t1, c, key, value)
-        if height(t_) <= height(l) + 1:
-            ut.cprint('Case1', 'red')
-            retvar = new_top(t_, l, k_, v_)
-        else:
-            ut.cprint('Case2', 'red')
-            t_rotate = rotate_single(t_, 0)
-            tmp = new_top(l, t_rotate, k_, v_)
-            out = rotate_single(tmp, 1)
-            retvar = out
-    else:
-        t_ = join_left(t1, c, key, value)
-        ut.cprint('CaseR', 'red')
-        t__ = new_top(t_, l, k_, v_)
-        if height(t_) <= height(l) + 1:
-            ut.cprint('Case3', 'red')
-            retvar  = t__
-        else:
-            ut.cprint('Case4', 'red')
-            retvar = rotate_single(t__, 1)
-    return retvar
-
-
-# DEBUG = 1
-
 def join(t1, t2, key, value):
+    """ Executes a join on avl nodes """
     h1 = height(t1)
     h2 = height(t2)
     if h1 > h2 + 1:
@@ -301,14 +210,6 @@ def join_dir(t1, t2, key, value, direction):
     Recursive version of join_left and join_right
     TODO: make this iterative using a stack
     """
-    # debug = DEBUG
-    # if debug > 1:
-    #     print('Join')
-    #     print('Input: t1')
-    #     ascii_tree(t1)
-    #     print('Input: t2')
-    #     ascii_tree(t2)
-
     other_side = 1 - direction
 
     if direction == 0:
@@ -328,19 +229,13 @@ def join_dir(t1, t2, key, value, direction):
     if hspine <= hsmall + 1:
         t_ = new_top(small, spine, key, value, direction)
         if height(t_) <= hrest + 1:
-            # if debug:
-            #     ut.cprint('Case1', 'red')
             retvar = new_top(t_, rest, k_, v_, direction)
         else:
-            # if debug:
-            #     ut.cprint('Case2', 'red')
             # Double rotation, but with a new node
             t_rotate = rotate_single(t_, direction)
             tmp = new_top(rest, t_rotate, k_, v_, 0)
             retvar = rotate_single(tmp, other_side)
     else:
-        # if debug:
-        #     ut.cprint('CaseR', 'red')
         # Traverse down the spine in the appropriate direction
         if direction == 0:
             t_ = join_dir(small, spine, key, value, direction)
@@ -348,17 +243,9 @@ def join_dir(t1, t2, key, value, direction):
             t_ = join_dir(spine, t2, key, value, direction)
         t__ = new_top(t_, rest, k_, v_, direction)
         if height(t_) <= hrest + 1:
-            # if debug:
-            #     ut.cprint('Case3', 'red')
             retvar = t__
         else:
-            # if debug:
-            #     ut.cprint('Case4', 'red')
             retvar = rotate_single(t__, other_side)
-    # if debug > 1:
-    #     print('++++')
-    #     print('Retvar:')
-    #     ascii_tree(retvar)
     return retvar
 
 
@@ -393,7 +280,6 @@ def test_join_cases():
             balance_factor = h1 - h2
             if abs(balance_factor) > 1:
                 print('ERROR')
-                ascii_tree(tree._root)
                 print('node.key = %r' % (node.key,))
                 print('node.left = %r' % (node.left,))
                 print('node.right = %r' % (node.right,))
@@ -418,13 +304,6 @@ def test_join_cases():
         key = value = int(keys1.max() + keys2.min()) // 2
         self  = AVLTree(list(zip(keys1, keys1)))
         other = AVLTree(list(zip(keys2, keys2)))
-        # debug = DEBUG
-        # if debug:
-        #     ut.cprint('==========', 'yellow')
-        #     if debug > 0:
-        #         print('direction = %r' % (direction,))
-        #         print('lowhigh = %r' % (lowhigh,))
-        #         print('key = %r' % (key,))
         new = join(self, other, key, value)
         assert_avl_invariants(new)
 
