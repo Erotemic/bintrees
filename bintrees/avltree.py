@@ -361,8 +361,11 @@ def ascii_tree(root):
 def to_networkx(self, labels=['key', 'value']):
     import networkx as nx
     graph = nx.Graph()
+    root = self._root
+    if root is None:
+        return graph
     graph.add_node(0)
-    queue = [[self._root, 0]]
+    queue = [[root, 0]]
     index = 0
     while queue:
         node = queue[0][0]  # Select front of queue.
@@ -1004,12 +1007,16 @@ class AVLTree(ABCTree):
         Example:
             >>> # DISABLE_DOCTEST
             >>> from bintrees.avltree import *  # NOQA
+            >>> import bintrees
             >>> import utool as ut
             >>> import numpy as np
             >>> keys = np.arange(10)
-            >>> self  = AVLTree(list(zip(keys, keys)))
+            >>> self = bintrees.FastAVLTree(list(zip(keys, keys)))
+            >>> self_copy = bintrees.FastAVLTree(list(zip(keys, keys)))
+            >>> # self = bintrees.AVLTree(list(zip(keys, keys)))
+            >>> # self_copy = self.copy()
             >>> start_key, stop_key = 3, 7
-            >>> inner, outer = self.copy().splice_inplace(start_key, stop_key)
+            >>> inner, outer = self_copy.splice_inplace(start_key, stop_key)
             >>> import plottool as pt
             >>> pt.qt4ensure()
             >>> g1 = to_networkx(self, ['key', 'balance'])

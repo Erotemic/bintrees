@@ -33,7 +33,8 @@ cdef extern from "ctrees.h":
     int ct_bintree_insert(node_t **root, object key, object value)
     int ct_bintree_remove(node_t **root, object key)
     # avl-tree functions
-    int avl_tree_join(node_t **root1, node_t **root2, object key, object value)
+    int avl_join_inplace(node_t **root1, node_t **root2, object key, object value)
+    node_t *avl_splice_inplace(node_t **root1, object start, object stop)
     int avl_insert(node_t **root, object key, object value)
     int avl_remove(node_t **root, object key)
     # rb-tree functions

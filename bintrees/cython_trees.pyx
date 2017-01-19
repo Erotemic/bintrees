@@ -298,17 +298,34 @@ cdef class _AVLTree(_BaseTree):
         minceil_key = -float('inf') if self.is_empty() else self.max_key()
         maxfloor_key = float('inf') if other.is_empty() else other.min_key()
         if not (minceil_key < key and key < maxfloor_key):
-            raise ValueError('invalid avl_tree_join args %r < %r < %r' % (
+            raise ValueError('invalid avl_join_inplace args %r < %r < %r' % (
                 minceil_key, key, maxfloor_key))
-        # cdef node_t *t1 = self.root
-        # cdef node_t *t2 = (<_AVLTree> other).root
-        avl_tree_join(&self.root, &(<_AVLTree> other).root, key, value)
-        # Two trees are now joined inplace
-        # self._root = other._root = top
+        # Join self and other inplace
+        avl_join_inplace(&self.root, &(<_AVLTree> other).root, key, value)
+        # All elements are assimilated into self
         new_count = self.count + other.count + 1
         self.count = new_count
+        # Other is now empty
         (<_AVLTree> other).count = 0
         return self
+
+    def splice_inplace(self, start_key, stop_key):
+        cdef node_t *t_inner = avl_splice_inplace(&self.root, start_key, stop_key)
+        cdef node_t *t_outer = <node_t*> self.root
+
+        # print('*t_inner = %r' % (t_inner,))
+        # print('*t_outer = %r' % (t_outer,))
+
+        # self becomes the outer part
+        # _AVLTree *outer = self
+        outer = self
+        self.count = -1 if t_outer != NULL else 0  # FIXME
+
+        # Create a new container for the inner part
+        inner = FastAVLTree()
+        (<_AVLTree> inner).root = t_inner
+        (<_AVLTree> inner).count = -1 if t_inner != NULL else 0  # FIXME
+        return inner, outer
 
 
 class FastAVLTree(_AVLTree, _ABCTree):

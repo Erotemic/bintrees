@@ -623,8 +623,171 @@ avl_join(node_t *t1, node_t *t2, PyObject *key, PyObject *value)
 }
 
 
+static void 
+avl_split(node_t *root, PyObject *key,
+          node_t** o_part1, node_t** o_part2, 
+          int *o_flag, PyObject **o_value) {
+    // # TODO: keep track of the size of the sets being avl_split if possible
+    if (root == NULL) {
+        (*o_part1) = root;
+        (*o_part2) = root;
+        (*o_flag) = 0;
+        (*o_value) = NULL;
+    }
+    else {
+        PyObject *t_key, *t_val;
+        node_t *l, *r;
+        l = LEFT_NODE(root);
+        r = RIGHT_NODE(root);
+        t_key = KEY(root);
+        t_val = VALUE(root);
+        if (key == t_key) {
+            (*o_part1) = l;
+            (*o_part2) = r;
+            (*o_flag) = 1;
+            (*o_value) = t_val;
+        }
+        else if (key < t_key) {
+            node_t *ll, *lr, *new_right;
+            /*ll, lr, b, bv = */
+            avl_split(l, key, &ll, &lr, o_flag, o_value);
+            new_right = avl_join(lr, r, t_key, t_val);
+            (*o_part1) = ll;
+            (*o_part2) = new_right;
+            /*return (ll, new_right, b, bv);*/
+        }
+        else {
+            node_t *rl, *rr, *new_left;
+            /*rl, rr, b, bv = */
+            avl_split(r, key, &rl, &rr, o_flag, o_value);
+            new_left = avl_join(l, rl, t_key, t_val);
+            (*o_part1) = new_left;
+            (*o_part2) = rr;
+            /*return (new_left, rr, b, bv);*/
+        }
+    }
+}
+
+
+static node_t *
+avl_insert_recusrive(node_t *root, PyObject *key, PyObject *value) {
+    // Functional version of insert O(log(n))
+    node_t *left, *right;
+    int start_flag;
+    PyObject *old_val;  //= NULL;
+
+    avl_split(root, key, &left, &right, &start_flag, &old_val);
+    if (old_val != NULL) {
+        Py_XDECREF(old_val); // release old value object
+        Py_INCREF(value); // take new value object
+    }
+    /*left, right, flag, old_val = avl_split(root, key)*/
+    return avl_join(left, right, key, value);
+}
+
+
+
+static node_t *
+avl_split_last(node_t *root, PyObject **o_max_key, PyObject **o_max_value)
+{
+    /*
+    Removes the maximum element from the tree
+
+    O(log(n)) = O(height(root))
+    */
+    node_t *left, *right;
+    node_t *new_right, *new_root;
+
+    left = root->link[0];
+    right = root->link[1];
+    if (right == NULL) {
+        (*o_max_key) = KEY(root);
+        (*o_max_value) = VALUE(root);
+        return left;
+    }
+    else {
+        new_right = avl_split_last(right, o_max_key, o_max_value);
+        new_root = avl_join(left, new_right, KEY(root), VALUE(root));
+        return new_root;
+    }
+}
+
+
+static node_t *
+avl_join2(node_t *t1, node_t *t2) {
+    /*
+    join two trees without any intermediate key
+
+    O(log(n) + log(m)) = O(r(t1) + r(t2))
+
+    For AVL-Trees the rank r(t1) = height(t1) - 1
+    */
+    PyObject *max_k, *max_v;
+    node_t *new_left;
+    if (t1 == NULL) {
+        return t2;
+    }
+    else {
+        new_left = avl_split_last(t1, &max_k, &max_v);
+        return avl_join(new_left, t2, max_k, max_v);
+    }
+}
+
+
+static void avl_splice(node_t *root, PyObject *start_key, PyObject *stop_key,
+                       node_t** t_inner, node_t** t_outer) {
+    // Extracts a ordered slice from `root` and returns the inside and outside
+    // parts.
+
+    // O(log(n)) 
+    // Split tree into three parts
+    node_t *left, *midright, *middle, *right;
+    int start_flag, stop_flag;
+    PyObject *start_val, *stop_val;
+
+    avl_split(root, start_key, &left, &midright, &start_flag, &start_val);
+    avl_split(midright, stop_key, &middle, &right, &stop_flag, &stop_val);
+
+    // Insert the start_key back into the middle part if it was removed
+    if (start_flag) {
+        (*t_inner) = avl_insert_recusrive(middle, start_key, start_val);
+    }
+    else {
+        (*t_inner) = middle;
+    }
+    // Recombine the outer parts
+    if (stop_flag) {
+        (*t_outer) = avl_join(left, right, stop_key, stop_val);
+    }
+    else {
+        (*t_outer) = avl_join2(left, right);
+    }
+    printf("t_outer %p\n", *t_outer);
+    printf("t_inner %p\n", *t_inner);
+}
+
+
+
+// --- Extern Funcs ---
+
+
+extern node_t *
+avl_splice_inplace(node_t **rootaddr, PyObject *start_key, PyObject *stop_key)
+{
+    node_t *root = (*rootaddr);
+    node_t *t_inner, *t_outer;
+    avl_splice(root, start_key, stop_key, &t_inner, &t_outer);
+
+    // The root becomes the outer tree
+    (*rootaddr) = t_outer;
+
+    // Return the inner tree
+    return t_inner;
+}
+
+
 extern int
-avl_tree_join(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value)
+avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value)
 {
     node_t *top;
     top = avl_join(*t1_addr, *t2_addr, key, value);
@@ -635,6 +798,7 @@ avl_tree_join(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value
 	(*t2_addr) = NULL;
     return 0;
 }
+
 
 
 
