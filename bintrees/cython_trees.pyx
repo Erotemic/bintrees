@@ -294,7 +294,7 @@ cdef class _AVLTree(_BaseTree):
         else:
             self.count -= 1
 
-    def join(self, other, key, value):
+    def join_inplace(self, other, key, value):
         minceil_key = -float('inf') if self.is_empty() else self.max_key()
         maxfloor_key = float('inf') if other.is_empty() else other.min_key()
         if not (minceil_key < key and key < maxfloor_key):
