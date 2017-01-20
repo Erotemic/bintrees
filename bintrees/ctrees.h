@@ -40,10 +40,14 @@ int ct_bintree_insert(node_t **root, PyObject *key, PyObject *value);
 int ct_bintree_remove(node_t **root, PyObject *key);
 
 /* avl-tree functions */
-int avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value);
-node_t *avl_splice_inplace(node_t **root, PyObject *start, PyObject *stop);
 int avl_insert(node_t **root, PyObject *key, PyObject *value);
 int avl_remove(node_t **root, PyObject *key);
+
+/* avl-tree join-based inplace functions */
+int avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value);
+void avl_splice_inplace(node_t **root, PyObject *start, PyObject *stop, node_t **t_inner, node_t **t_outer);
+PyObject *avl_split_inplace(node_t **root, PyObject *key, int* o_flag, node_t **t_right);
+PyObject *avl_split_last_inplace(node_t **root);
 
 /* rb-tree functions */
 int rb_insert(node_t **root, PyObject *key, PyObject *value);

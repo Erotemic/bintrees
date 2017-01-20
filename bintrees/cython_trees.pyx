@@ -204,27 +204,13 @@ cdef class _BaseTree:
                 node = stack.pop()
                 func(<object>node.key, <object>node.value)
 
-    def _traverse_nodes(self):
-        """
-        Traverses nodes for debugging
-        """
-        node = self._root
-        stack = []
-        yielder = []
-        while stack or node is not None:
-            if node is not None:
-                stack.append(node)
-                node = node.left
-            else:
-                node = stack.pop()
-                yielder += [node]
-                # yield node
-                node = node.right
-        return yielder
-
     @property
     def _root(self):
         return _create_dummy_node(<node_t*> self.root)
+
+    def recount(self):
+        """ O(n) recomputation of count (in case a split destroys it) """
+        self.count = sum(1 for _ in self._traverse_nodes())
 
 
 class DummyNode(object):
@@ -309,9 +295,35 @@ cdef class _AVLTree(_BaseTree):
         (<_AVLTree> other).count = 0
         return self
 
+    def split_inplace(self, key):
+        cdef int flag
+        cdef node_t *t_right;
+        value_ptr = avl_split_inplace(&self.root, key, &flag, &t_right)
+        cdef node_t *t_left = <node_t*> self.root
+
+        value = <object> value_ptr
+        # self becomes the left part
+        # _AVLTree *outer = self
+        left = self
+        self.count = -1 if t_left != NULL else 0  # FIXME
+
+        # Create a new container for the inner part
+        right = FastAVLTree()
+        (<_AVLTree> right).root = t_right
+        (<_AVLTree> right).count = -1 if t_right != NULL else 0  # FIXME
+        return left, right, flag, value
+
+    def split_last_inplace(self):
+        if self.is_empty():
+            raise IndexError('Empty tree has no maximum element')
+        item = avl_split_last_inplace(&self.root)
+        self.count -= 1
+        return <tuple>item
+
     def splice_inplace(self, start_key, stop_key):
-        cdef node_t *t_inner = avl_splice_inplace(&self.root, start_key, stop_key)
-        cdef node_t *t_outer = <node_t*> self.root
+        cdef node_t *t_inner
+        cdef node_t *t_outer
+        avl_splice_inplace(&self.root, start_key, stop_key, &t_inner, &t_outer)
 
         # print('*t_inner = %r' % (t_inner,))
         # print('*t_outer = %r' % (t_outer,))
@@ -319,7 +331,8 @@ cdef class _AVLTree(_BaseTree):
         # self becomes the outer part
         # _AVLTree *outer = self
         outer = self
-        self.count = -1 if t_outer != NULL else 0  # FIXME
+        (<_AVLTree> outer).root = t_outer
+        (<_AVLTree> outer).count = -1 if t_outer != NULL else 0  # FIXME
 
         # Create a new container for the inner part
         inner = FastAVLTree()

@@ -33,10 +33,15 @@ cdef extern from "ctrees.h":
     int ct_bintree_insert(node_t **root, object key, object value)
     int ct_bintree_remove(node_t **root, object key)
     # avl-tree functions
-    int avl_join_inplace(node_t **root1, node_t **root2, object key, object value)
-    node_t *avl_splice_inplace(node_t **root1, object start, object stop)
     int avl_insert(node_t **root, object key, object value)
     int avl_remove(node_t **root, object key)
+
+    # avl-tree join-based inplace functions
+    int avl_join_inplace(node_t **root1, node_t **root2, object key, object value)
+    void avl_splice_inplace(node_t **root1, object start, object stop, node_t **t_inner, node_t **t_outer)
+    PyObject *avl_split_inplace(node_t **root1, object key, int* o_flag, node_t **t_right)
+    PyObject *avl_split_last_inplace(node_t **root);
+
     # rb-tree functions
     int rb_insert(node_t **root, object key, object value)
     int rb_remove(node_t **root, object key)

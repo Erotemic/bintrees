@@ -52,7 +52,13 @@ class Node(object):
 
     @property
     def xdata(self):
+        """ compatibility with the C node_t struct """
         return self.balance
+
+    @xdata.setter
+    def xdata(self, value):
+        """ compatibility with the C node_t struct """
+        self.balance = value
 
     def __getitem__(self, key):
         """N.__getitem__(key) <==> x[key], where key is 0 (left) or 1 (right)."""
@@ -126,27 +132,27 @@ def assert_avl_invariants(tree):
         raise AssertionError('count is inaccurate')
 
 
-def test_join_cases():
+def test_join_cases(mode='cpython'):
     """
     CommandLine:
-        python -m bintrees.avltree test_join_cases
+        python -m bintrees.avltree test_join_cases 'cython'
+        python -m bintrees.avltree test_join_cases 'python'
     """
     import numpy as np
     import utool as ut
     import vtool as vt
-    # lowhigh_cases = [
-    #     [1, 3],
-    #     [1, 10],
-    #     [1, 9],
-    #     [3, 9],
-    #     [2, 3],
-    #     [3, 32],
-    # ]
     import bintrees
-    # _AVLTree_cls = bintrees.AVLTree
-    _AVLTree_cls = bintrees.FastAVLTree
+    if mode.lower() == 'python':
+        _AVLTree_cls = bintrees.AVLTree
+    elif mode.lower() == 'cython':
+        _AVLTree_cls = bintrees.FastAVLTree
+    else:
+        raise ValueError(mode)
 
     # Exhaustively test that merging trees works
+    # lowhigh_cases = [
+    #     [1, 3], [1, 10], [1, 9], [3, 9], [2, 3], [3, 32],
+    # ]
     lowhigh_cases = []
     n = 4
     for x in range(0, 2 ** n):
@@ -156,8 +162,10 @@ def test_join_cases():
     offset = max(map(max, lowhigh_cases)) * 2
     directions = [0, 1]
 
+    label =  '%s avl_join test' % (mode,)
+
     test_cases = list(ut.product(directions, lowhigh_cases))
-    for direction, lowhigh in ut.ProgIter(test_cases, label='test avl_join'):
+    for direction, lowhigh in ut.ProgIter(test_cases, label=label):
         keys1 = np.arange(lowhigh[direction])
         keys2 = np.arange(lowhigh[1 - direction]) + offset
 
@@ -173,6 +181,151 @@ def test_join_cases():
         assert len(new) == len(keys1) + len(keys2) + 1
         assert self is new
         assert other._root is None
+
+
+def debug_splice():
+    r"""
+    CommandLine:
+        python -m bintrees.avltree debug_splice --show
+    """
+    import utool as ut
+    import bintrees
+    import plottool as pt
+    import numpy as np
+    size, start, stop = 9, 3, 6
+    keys = np.arange(size)
+    keys = list(range(size))
+    self1  = bintrees.AVLTree(list(zip(keys, keys)))
+    self2  = bintrees.FastAVLTree(list(zip(keys, keys)))
+
+    inner1, outer1 = self1.copy().splice_inplace(start, stop)
+    inner2, outer2 = self2.copy().splice_inplace(start, stop)
+
+    nxkeys = []
+    # ['key', 'balance']
+
+    def plot(self, slx, sly):
+        pnum = (2, 4, (slx, sly))
+        pt.show_nx(self.to_networkx(nxkeys), fnum=1, pnum=pnum)
+    plot(self1,  slice(0, 1), slice(0, 2))
+    plot(inner1, slice(1, 2), 0)
+    plot(outer1, slice(1, 2), 1)
+
+    plot(self2,  slice(0, 1), slice(2, 4))
+    plot(inner2, slice(1, 2), 2)
+    plot(outer2, slice(1, 2), 3)
+    ut.show_if_requested()
+
+
+def debug_split():
+    r"""
+    CommandLine:
+        python -m bintrees.avltree debug_split --show
+    """
+    import utool as ut
+    import bintrees
+    import plottool as pt
+    import numpy as np
+    size, key =  9, 3
+    keys = np.arange(size)
+    keys = list(range(size))
+    self1  = bintrees.AVLTree(list(zip(keys, keys)))
+    self2  = bintrees.FastAVLTree(list(zip(keys, keys)))
+
+    left1, right1, flag1, value1 = self1.copy().split_inplace(key)
+    left2, right2, flag2, value2 = self2.copy().split_inplace(key)
+
+    nxkeys = []
+    # ['key', 'balance']
+
+    def plot(self, slx, sly):
+        pnum = (2, 4, (slx, sly))
+        pt.show_nx(self.to_networkx(nxkeys), fnum=1, pnum=pnum)
+    plot(self1,  slice(0, 1), slice(0, 2))
+    plot(left1, slice(1, 2), 0)
+    plot(right1, slice(1, 2), 1)
+
+    plot(self2,  slice(0, 1), slice(2, 4))
+    plot(left1, slice(1, 2), 2)
+    plot(right1, slice(1, 2), 3)
+    ut.show_if_requested()
+
+
+def debug_split_last():
+    r"""
+    CommandLine:
+        python -m bintrees.avltree debug_split_last --show
+    """
+    import utool as ut
+    import bintrees
+    import plottool as pt
+    import numpy as np
+    size = 9
+    keys = np.arange(size)
+    keys = list(range(size))
+    self1  = bintrees.AVLTree(list(zip(keys, keys)))
+    self2  = bintrees.FastAVLTree(list(zip(keys, keys)))
+
+    rest1 = self1.copy()
+    rest2 = self2.copy()
+
+    key1, value1 = rest1.split_last_inplace()
+    key2, value2 = rest2.split_last_inplace()
+    print('key1 = %r' % (key1,))
+    print('key2 = %r' % (key2,))
+
+    nxkeys = []
+    # ['key', 'balance']
+
+    def plot(self, slx, sly):
+        pnum = (2, 4, (slx, sly))
+        pt.show_nx(self.to_networkx(nxkeys), fnum=1, pnum=pnum)
+    plot(self1,  slice(0, 1), slice(0, 2))
+    plot(rest1, slice(1, 2), slice(0, 2))
+
+    plot(self2,  slice(0, 1), slice(2, 4))
+    plot(rest2, slice(1, 2), slice(2, 4))
+    ut.show_if_requested()
+
+
+def test_splice_cases(mode):
+    """
+    CommandLine:
+        python -m bintrees.avltree test_splice_cases 'python'
+        python -m bintrees.avltree test_splice_cases 'cython'
+    """
+    import numpy as np
+    import utool as ut
+    import bintrees
+    if mode.lower() == 'python':
+        _AVLTree_cls = bintrees.AVLTree
+    elif mode.lower() == 'cython':
+        _AVLTree_cls = bintrees.FastAVLTree
+    else:
+        raise ValueError(mode)
+    label =  '%s avl_splice test' % (mode,)
+
+    def test_case_gen():
+        yield 0, 0, 0
+        for size in range(10):
+            for start in range(0, size):
+                for stop in range(start, size + 1):
+                    yield size, start, stop
+
+    test_cases = list(test_case_gen())
+    # test_cases = [[9, 3, 6]]
+
+    for size, start, stop in ut.ProgIter(test_cases, bs=0, label=label):
+        print('  size,start,stop = %r,%r,%r' % (size, start, stop,))
+        keys = np.arange(size)
+        self  = _AVLTree_cls(list(zip(keys, keys)))
+        inside, outside = self.splice_inplace(start, stop)
+        assert outside is self
+        # assert_avl_invariants(new)
+        # assert len(new) == len(keys1) + len(keys2) + 1
+        # assert self is new
+        # assert other._root is None
+    pass
 
 
 def test_cython_join_cases():
@@ -358,34 +511,6 @@ def ascii_tree(root):
     print([(n.key, n.balance) for n in yielder if n is not None])
 
 
-def to_networkx(self, labels=['key', 'value']):
-    import networkx as nx
-    graph = nx.Graph()
-    root = self._root
-    if root is None:
-        return graph
-    graph.add_node(0)
-    queue = [[root, 0]]
-    index = 0
-    while queue:
-        node = queue[0][0]  # Select front of queue.
-        node_index = queue[0][1]
-        label = ','.join([str(getattr(node, k)) for k in labels])
-        graph.node[node_index]['label'] = label
-        if node.left is not None:
-            graph.add_node(node_index)
-            graph.add_edges_from([(node_index, index + 1)])
-            queue.append([node.left, index + 1])
-            index += 1
-        if node.right is not None:
-            graph.add_node(node_index)
-            graph.add_edges_from([(node_index, index + 1)])
-            queue.append([node.right, index + 1])
-            index += 1
-        queue.pop(0)
-    return graph
-
-
 def avl_splice(root, start_key, stop_key):
     """
     Extracts a ordered slice from `root` and returns the inside and outside
@@ -393,9 +518,24 @@ def avl_splice(root, start_key, stop_key):
 
     O(log(n))
     """
+    import utool as ut
+    ut.cprint('----- SPLICE(PY) -', 'yellow')
+    print('-----')
+    print('root.key = %r' % (root.key,))
+    print('start_key = %r' % (start_key,))
+    print('stop_key = %r' % (stop_key,))
+
     # Split tree into three parts
     left, midright, start_flag, start_val = avl_split(root, start_key)
+    print('left.key = %r' % (left.key,))
+    print('midright.key = %r' % (midright.key,))
+
     middle, right, stop_flag, stop_val = avl_split(midright, stop_key)
+
+    print('left.key = %r' % (left.key,))
+    print('middle.key = %r' % (middle.key,))
+    print('right.key = %r' % (right.key,))
+
     # Insert the start_key back into the middle part if it was removed
     if start_flag:
         t_inner = avl_insert(middle, start_key, start_val)
@@ -406,6 +546,7 @@ def avl_splice(root, start_key, stop_key):
         t_outer = avl_join(left, right, stop_key, stop_val)
     else:
         t_outer =  avl_join2(left, right)
+    ut.cprint('-----', 'yellow')
     return t_inner, t_outer
 
 
@@ -416,7 +557,7 @@ def avl_split_last(root):
     O(log(n)) = O(height(root))
     """
     if root is None:
-        raise ValueError('None has no maximum element')
+        raise IndexError('Empty tree has no maximum element')
     left, right = root.left, root.right
     if right is None:
         return (left, root.key, root.value)
@@ -531,22 +672,40 @@ def avl_split(root, key):
             b is a flag indicating if key in root
             v is the value of the key if it existed
     """
+    print('----- SPLIT -')
+    print('root = %r' % (None if root is None else root.key,))
     # TODO: keep track of the size of the sets being avl_split if possible
     if root is None:
+        print('Split NULL')
         return (root, root, False, None)
     else:
         l, r = root.left, root.right
         t_key = root.key
         t_val = root.value
         if key == t_key:
+            part1 = l
+            part2 = r
+            print('Split Case1')
+            print('part1 = %r' % (None if part1 is None else part1.key,))
+            print('part2 = %r' % (None if part2 is None else part2.key,))
             return (l, r, True, t_val)
         elif key < t_key:
+            print('Split Case2')
             ll, lr, b, bv = avl_split(l, key)
             new_right = avl_join(lr, r, t_key, t_val)
+            part1 = ll
+            part2 = new_right
+            print('part1 = %r' % (None if part1 is None else part1.key,))
+            print('part2 = %r' % (None if part2 is None else part2.key,))
             return (ll, new_right, b, bv)
         else:
+            print('Split Case3')
             rl, rr, b, bv = avl_split(r, key)
             new_left = avl_join(l, rl, t_key, t_val)
+            part1 = new_left
+            part2 = rr
+            print('part1 = %r' % (None if part1 is None else part1.key,))
+            print('part2 = %r' % (None if part2 is None else part2.key,))
             return (new_left, rr, b, bv)
 
 
@@ -964,9 +1123,9 @@ class AVLTree(ABCTree):
             >>> new = self.copy().join_inplace(other.copy(), key, value)
             >>> import plottool as pt
             >>> pt.qt4ensure()
-            >>> g1 = to_networkx(self, ['key', 'balance'])
-            >>> g2 = to_networkx(other, ['key', 'balance'])
-            >>> g_new = to_networkx(new, ['key', 'balance'])
+            >>> g1 = self.to_networkx(['key', 'balance'])
+            >>> g2 = other.to_networkx(['key', 'balance'])
+            >>> g_new = new.to_networkx(['key', 'balance'])
             >>> pt.show_nx(g1, fnum=1, pnum=(2, 2, (0, 0)))
             >>> pt.show_nx(g2, fnum=1, pnum=(2, 2, (1, 0)))
             >>> pt.show_nx(g_new, fnum=1, pnum=(2, 2, (slice(0, 2), 1)))
@@ -1019,9 +1178,9 @@ class AVLTree(ABCTree):
             >>> inner, outer = self_copy.splice_inplace(start_key, stop_key)
             >>> import plottool as pt
             >>> pt.qt4ensure()
-            >>> g1 = to_networkx(self, ['key', 'balance'])
-            >>> g_in = to_networkx(inner, ['key', 'balance'])
-            >>> g_out = to_networkx(outer, ['key', 'balance'])
+            >>> g1 = self.to_networkx(['key', 'balance'])
+            >>> g_in = inner.to_networkx(['key', 'balance'])
+            >>> g_out = outer.to_networkx(['key', 'balance'])
             >>> pt.show_nx(g1, fnum=1, pnum=(2, 2, (slice(0, 2), 0)))
             >>> pt.show_nx(g_in, fnum=1, pnum=(2, 2, (0, 1)))
             >>> pt.show_nx(g_out, fnum=1, pnum=(2, 2, (1, 1)))
@@ -1037,6 +1196,12 @@ class AVLTree(ABCTree):
         outer._root = t_outer
         outer._count = 0 if t_outer is None else -1  # FIXME
         return inner, outer
+
+    def split_last_inplace(self):
+        t1, k, v = avl_split_last(self._root)
+        self._root = t1
+        self._count -= 1
+        return (k, v)
 
     def split_inplace(self, key):
         """

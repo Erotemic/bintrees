@@ -9,10 +9,10 @@
 from __future__ import absolute_import
 
 import sys
-PYPY = hasattr(sys, 'pypy_version_info')
-
-from .treeslice import TreeSlice
 from operator import attrgetter
+from .treeslice import TreeSlice
+
+PYPY = hasattr(sys, 'pypy_version_info')
 
 
 class _ABCTree(object):
@@ -476,6 +476,46 @@ class _ABCTree(object):
         return thiskeys.isdisjoint(frozenset(tree.keys()))
     isdisjoint = is_disjoint  # for compatibility to set()
 
+    def _traverse_nodes(self):
+        """ Debugging function (exposes cython nodes as dummy nodes) """
+        node = self._root
+        stack = []
+        yielder = []
+        while stack or node is not None:
+            if node is not None:
+                stack.append(node)
+                node = node.left
+            else:
+                node = stack.pop()
+                yielder += [node]
+                # yield node
+                node = node.right
+        return yielder
+
+    def to_networkx(self, labels=None):
+        """ Get a networkx representation of the binary search tree. """
+        import networkx as nx
+        graph = nx.DiGraph()
+        for node in self._traverse_nodes():
+            u = node.key
+            graph.add_node(u)  # Minor redundancy
+            # Set node properties
+            graph.node[u]['value'] = node.value
+            if labels:
+                label = ','.join([str(getattr(node, k)) for k in labels])
+                graph.node[u]['label'] = label
+            if node.left is not None:
+                v = node.left.key
+                graph.add_node(v)
+                graph.add_edge(u, v)
+                graph.edge[u][v]['label'] = 'L'
+            if node.right is not None:
+                v = node.right.key
+                graph.add_node(v)
+                graph.add_edge(u, v)
+                graph.edge[u][v]['label'] = 'R'
+        return graph
+
 
 def _build_sets(trees):
     return [frozenset(tree.keys()) for tree in trees]
@@ -632,7 +672,7 @@ class CPYTHON_ABCTree(_ABCTree):
             else:
                 node = node.right
 
-        if node is None: # stay at dead end
+        if node is None:  # stay at dead end
             raise KeyError(str(key))
         # found node of key
         if node.right is not None:
@@ -644,7 +684,7 @@ class CPYTHON_ABCTree(_ABCTree):
                 succ_node = node
             elif node.key < succ_node.key:
                 succ_node = node
-        elif succ_node is None: # given key is biggest in tree
+        elif succ_node is None:  # given key is biggest in tree
             raise KeyError(str(key))
         return succ_node.key, succ_node.value
 
@@ -668,7 +708,7 @@ class CPYTHON_ABCTree(_ABCTree):
                     prev_node = node
                 node = node.right
 
-        if node is None: # stay at dead end (None)
+        if node is None:  # stay at dead end (None)
             raise KeyError(str(key))
         # found node of key
         if node.left is not None:
@@ -680,7 +720,7 @@ class CPYTHON_ABCTree(_ABCTree):
                 prev_node = node
             elif node.key > prev_node.key:
                 prev_node = node
-        elif prev_node is None: # given key is smallest in tree
+        elif prev_node is None:  # given key is smallest in tree
             raise KeyError(str(key))
         return prev_node.key, prev_node.value
 
@@ -771,21 +811,6 @@ class CPYTHON_ABCTree(_ABCTree):
                     node = stack.pop()
                     go_left = False
 
-    def _traverse_nodes(self):
-        node = self._root
-        stack = []
-        yielder = []
-        while stack or node is not None:
-            if node is not None:
-                stack.append(node)
-                node = node.left
-            else:
-                node = stack.pop()
-                yielder += [node]
-                # yield node
-                node = node.right
-        return yielder
-
     def _get_in_range_func(self, start_key, end_key):
         if start_key is None and end_key is None:
             return lambda x: True
@@ -796,6 +821,10 @@ class CPYTHON_ABCTree(_ABCTree):
                 return lambda x: x >= start_key
             else:
                 return lambda x: start_key <= x < end_key
+
+    def recount(self):
+        """ O(n) recomputation of count (in case a split destroys it) """
+        self._count = sum(1 for _ in self._traverse_nodes())
 
 
 class PYPY_ABCTree(CPYTHON_ABCTree):
