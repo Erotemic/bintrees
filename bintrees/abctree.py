@@ -492,7 +492,7 @@ class _ABCTree(object):
                 node = node.right
         return yielder
 
-    def to_networkx(self, labels=None, edge_labels=True):
+    def to_networkx(self, labels=None, edge_labels=False):
         """ Get a networkx representation of the binary search tree. """
         import networkx as nx
         graph = nx.DiGraph()

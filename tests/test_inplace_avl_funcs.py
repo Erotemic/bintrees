@@ -57,23 +57,20 @@ def assert_avl_invariants(tree, verbose=0):
             raise AssertionError('count=%r is inaccurate(%r)' % (tree.count, len(inorder_keys)))
 
 
-def test_join_cases(mode='cython'):
+def test_join_cases():
     """
     CommandLine:
-        python -m bintrees.avltree test_join_cases 'cython'
-        python -m bintrees.avltree test_join_cases 'python'
         python ~/code/bintrees/tests/test_inplace_avl_funcs.py test_join_cases
+
+    Example:
+        >>> # ENABLE_DOCTEST
+        >>> from tests.test_inplace_avl_funcs import *  # NOQA
+        >>> test_join_cases()
     """
     import numpy as np
     import utool as ut
     import vtool as vt
     import bintrees
-    if mode.lower() == 'python':
-        _AVLTree_cls = bintrees.AVLTree
-    elif mode.lower() == 'cython':
-        _AVLTree_cls = bintrees.FastAVLTree
-    else:
-        raise ValueError(mode)
 
     # Exhaustively test that joining trees works
     lowhigh_cases = []
@@ -85,33 +82,45 @@ def test_join_cases(mode='cython'):
     offset = max(map(max, lowhigh_cases)) * 2
     directions = [0, 1]
 
-    label =  '%s avl_join test' % (mode,)
-
     test_cases = list(ut.product(directions, lowhigh_cases))
-    for direction, lowhigh in ut.ProgIter(test_cases, label=label):
-        keys1 = np.arange(lowhigh[direction])
-        keys2 = np.arange(lowhigh[1 - direction]) + offset
+    for direction, lowhigh in ut.ProgIter(test_cases, label='test avl_join'):
 
-        mx1 = vt.safe_max(keys1, fill=0)
-        mn2 = vt.safe_min(keys2, fill=mx1 + 2)
-        key = value = int(mx1 + mn2) // 2
+        res_list = []
+        cls_list = [bintrees.FastAVLTree, bintrees.AVLTree]
+        for cls in cls_list:
+            keys1 = np.arange(lowhigh[direction])
+            keys2 = np.arange(lowhigh[1 - direction]) + offset
 
-        self  = _AVLTree_cls(list(zip(keys1, keys1)))
-        other = _AVLTree_cls(list(zip(keys2, keys2)))
-        new = self.join_inplace(other, key, value)
+            mx1 = vt.safe_max(keys1, fill=0)
+            mn2 = vt.safe_min(keys2, fill=mx1 + 2)
+            key = value = int(mx1 + mn2) // 2
 
-        new.recount()
-        assert_avl_invariants(new)
+            self  = cls(list(zip(keys1, keys1)))
+            other = cls(list(zip(keys2, keys2)))
+            new = self.join_inplace(other, key, value)
 
-        assert len(new) == len(keys1) + len(keys2) + 1
-        assert self is new
-        assert other._root is None
+            new.recount()
+            assert_avl_invariants(new)
+
+            assert len(new) == len(keys1) + len(keys2) + 1
+            assert self is new
+            assert other._root is None
+            res_list.append(list(new.keys()))
+
+        res0 = res_list[0]
+        for res in res_list:
+            assert res == res0, 'cython and python differ'
 
 
 def test_splice_cases():
     """
     CommandLine:
         python ~/code/bintrees/tests/test_inplace_avl_funcs.py test_splice_cases
+
+    Example:
+        >>> # ENABLE_DOCTEST
+        >>> from tests.test_inplace_avl_funcs import *  # NOQA
+        >>> test_splice_cases()
     """
     import utool as ut
     import bintrees
@@ -163,7 +172,7 @@ def test_splice_cases():
 
         res0 = res_list[0]
         for res in res_list:
-            assert res == res0
+            assert res == res0, 'cython and python differ'
 
 
 def test_split_cases():
@@ -504,17 +513,17 @@ def debug_join():
     """
     import bintrees
     import utool as ut
-    # Test Cython Version
-    # direction = 1
-    # lowhigh = [10, 20]
-    # lowhigh = [10, 20]
-    # offset = 20 * 2
-    # keys1 = np.arange(lowhigh[direction])
-    # keys2 = np.arange(lowhigh[1 - direction]) + offset
-    # key = value = int(keys1.max() + keys2.min()) // 2
-    keys1 = [0]
-    keys2 = [3, 4, 5, 6]
-    key = value = 2
+    import numpy as np
+    direction = 1
+    lowhigh = [10, 20]
+    lowhigh = [10, 20]
+    offset = 20 * 2
+    keys1 = np.arange(lowhigh[direction])
+    keys2 = np.arange(lowhigh[1 - direction]) + offset
+    key = value = int(keys1.max() + keys2.min()) // 2
+    # keys1 = [0]
+    # keys2 = [3, 4, 5, 6]
+    # key = value = 2
     print('key = %r' % (key,))
 
     self1 = bintrees.AVLTree(list(zip(keys1, keys1)))
@@ -522,22 +531,22 @@ def debug_join():
     self1_copy = self1.copy()
     other1_copy = other1.copy()
 
-    if False:
-        for x in [other1, other1_copy]:
-            node_t = other1._root.__class__
-            def new_node(k, b):
-                n = node_t()
-                n.key = k
-                n.value = k
-                n.balance = b
-                return n
-            # hand craft special case
-            n = new_node(5, 2)
-            n.right = new_node(6, 0)
-            n.left = new_node(4, 1)
-            n.left.left = new_node(3, 0)
-            x._root = n
-            print(x)
+    # if False:
+    #     for x in [other1, other1_copy]:
+    #         node_t = other1._root.__class__
+    #         def new_node(k, b):
+    #             n = node_t()
+    #             n.key = k
+    #             n.value = k
+    #             n.balance = b
+    #             return n
+    #         # hand craft special case
+    #         n = new_node(5, 2)
+    #         n.right = new_node(6, 0)
+    #         n.left = new_node(4, 1)
+    #         n.left.left = new_node(3, 0)
+    #         x._root = n
+    #         print(x)
 
     self2 = bintrees.FastAVLTree(list(zip(keys1, keys1)))
     other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
@@ -571,6 +580,7 @@ if __name__ == '__main__':
     CommandLine:
         python -m tests.test_inplace_avl_funcs
         python -m tests.test_inplace_avl_funcs --allexamples
+        python ~/code/bintrees/tests/test_inplace_avl_funcs.py --allexamples
     """
     import multiprocessing
     multiprocessing.freeze_support()  # for win32
