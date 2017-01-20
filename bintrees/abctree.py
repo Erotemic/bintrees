@@ -492,7 +492,7 @@ class _ABCTree(object):
                 node = node.right
         return yielder
 
-    def to_networkx(self, labels=None, edge_labels=False):
+    def to_networkx(self, labels=None, edge_labels=True):
         """ Get a networkx representation of the binary search tree. """
         import networkx as nx
         graph = nx.DiGraph()
@@ -625,6 +625,9 @@ class CPYTHON_ABCTree(_ABCTree):
         param int order: inorder = 0, preorder = -1, postorder = +1
         """
         def _traverse(node):
+            if node is None:
+                # fixes bug with copying an empty tree
+                return
             if order == -1:
                 func(node.key, node.value)
             if node.left is not None:

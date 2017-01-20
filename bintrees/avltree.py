@@ -84,23 +84,9 @@ def avl_splice(root, start_key, stop_key):
 
     O(log(n))
     """
-    # import utool as ut
-    # ut.cprint('----- SPLICE(PY) -', 'yellow')
-    # print('-----')
-    # print('root.key = %r' % (root.key,))
-    # print('start_key = %r' % (start_key,))
-    # print('stop_key = %r' % (stop_key,))
-
     # Split tree into three parts
     left, midright, start_flag, start_val = avl_split(root, start_key)
-    # print('left.key = %r' % (left.key,))
-    # print('midright.key = %r' % (midright.key,))
-
     middle, right, stop_flag, stop_val = avl_split(midright, stop_key)
-
-    # print('left.key = %r' % (left.key,))
-    # print('middle.key = %r' % (middle.key,))
-    # print('right.key = %r' % (right.key,))
 
     # Insert the start_key back into the middle part if it was removed
     if start_flag:
@@ -172,9 +158,7 @@ def avl_intersection(t1, t2):
     """
     O(log(n)log(m))
     """
-    if t1 is None:
-        return None
-    elif t2 is None:
+    if t1 is None or t2 is None:
         return None
     else:
         l2, r2 = t2[0], t2[1]
@@ -238,14 +222,8 @@ def avl_split(root, key):
             b is a flag indicating if key in root
             v is the value of the key if it existed
     """
-    debug_split = 0
-    if debug_split:
-        print('----- SPLIT -')
-        print('root = %r' % (None if root is None else root.key,))
     # TODO: keep track of the size of the sets being avl_split if possible
     if root is None:
-        if debug_split:
-            print('Split NULL')
         part1 = root
         part2 = root
         return (part1, part2, False, None)
@@ -256,33 +234,22 @@ def avl_split(root, key):
         if key == t_key:
             part1 = l
             part2 = r
-            if debug_split:
-                print('Split Case1')
-                print('part1 = %r' % (None if part1 is None else part1.key,))
-                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, True, t_val)
         elif key < t_key:
-            if debug_split:
-                print('Split Case2')
             ll, lr, b, bv = avl_split(l, key)
             new_right = avl_join(lr, r, t_key, t_val)
             part1 = ll
             part2 = new_right
-            if debug_split:
-                print('part1 = %r' % (None if part1 is None else part1.key,))
-                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, b, bv)
         else:
-            if debug_split:
-                print('Split Case3')
             rl, rr, b, bv = avl_split(r, key)
             new_left = avl_join(l, rl, t_key, t_val)
             part1 = new_left
             part2 = rr
-            if debug_split:
-                print('part1 = %r' % (None if part1 is None else part1.key,))
-                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, b, bv)
+
+
+_DEBUG_JOIN = 0
 
 
 def avl_join(t1, t2, key, value):
@@ -293,24 +260,73 @@ def avl_join(t1, t2, key, value):
         O(abs(r(t1) - r(t2)))
         O(abs(height(t1) - height(t2)))
     """
+    if _DEBUG_JOIN:
+        print('-- JOIN key=%r' % (key,))
+
     if t1 is None and t2 is None:
+        if _DEBUG_JOIN:
+            print('Join Case 1')
         return avl_new_top(None, None, key, value, 0)
     elif t1 is None:
         # FIXME keep track of count if possible
+        if _DEBUG_JOIN:
+            print('Join Case 2')
         return avl_insert_iterative(t2, key, value)
     elif t2 is None:
+        if _DEBUG_JOIN:
+            print('Join Case 3')
         return avl_insert_iterative(t1, key, value)
 
     h1 = height(t1)
     h2 = height(t2)
     if h1 > h2 + 1:
+        if _DEBUG_JOIN:
+            print('Join Case 4')
         top = avl_join_dir(t1, t2, key, value, 1)
     elif h2 > h1 + 1:
+        if _DEBUG_JOIN:
+            print('Join Case 5')
+            ascii_tree(t1)
+            ascii_tree(t2)
+
         top = avl_join_dir(t1, t2, key, value, 0)
+        if _DEBUG_JOIN:
+            ascii_tree(top)
     else:
+        if _DEBUG_JOIN:
+            print('Join Case 6')
         # Insert at the top of the tree
         top = avl_new_top(t1, t2, key, value, 0)
     return top
+
+
+def ascii_tree(root, name=None):
+    if hasattr(root, '_root'):
+        root = root._root
+    yielder = []
+    queue = [root]
+    while queue:
+        node = queue.pop(0)
+        if node is None:
+            yielder.append(None)
+        else:
+            yielder.append(node)
+            queue.append(node.left)
+            queue.append(node.right)
+    sequence = ['#' if n is None else str(n.key) for n in yielder]
+    code = ','.join(sequence)
+    # code = code.rstrip('#')
+    import drawtree
+    if name is not None:
+        print('+---')
+        print('Tree(%s)' % (name,))
+    drawtree.draw_level_order('{' + code + '}')
+    print([(n.key, n.balance) for n in yielder if n is not None])
+    if name is not None:
+        print('L___')
+
+
+_DEBUG_JOIN_DIR = 0
 
 
 def avl_join_dir_recursive(t1, t2, key, value, direction):
@@ -319,11 +335,17 @@ def avl_join_dir_recursive(t1, t2, key, value, direction):
     TODO: make this iterative using a stack
     """
     other_side = 1 - direction
+    if _DEBUG_JOIN_DIR:
+        print('--JOIN DIR (dir=%r) --' % (direction,))
+        ascii_tree(t1, 't1')
+        ascii_tree(t2, 't2')
 
     if direction == 0:
         large, small = t2, t1
     elif direction == 1:
         large, small = t1, t2
+    else:
+        assert False
 
     # Follow the spine of the larger tree
     spine = large[direction]
@@ -334,25 +356,52 @@ def avl_join_dir_recursive(t1, t2, key, value, direction):
     hspine = height(spine)
     hrest = height(rest)
 
+    if _DEBUG_JOIN_DIR:
+        ascii_tree(spine, 'spine')
+        ascii_tree(rest, 'rest')
+        ascii_tree(small, 'small')
+
     if hspine <= hsmall + 1:
         t_ = avl_new_top(small, spine, key, value, direction)
+        if _DEBUG_JOIN_DIR:
+            print('JOIN DIR (BASE)')
+            ascii_tree(t_, 't_')
         if height(t_) <= hrest + 1:
+            if _DEBUG_JOIN_DIR:
+                print('JOIN DIR (Case 1)')
             return avl_new_top(t_, rest, k_, v_, direction)
         else:
             # Double rotation, but with a new node
+            if _DEBUG_JOIN_DIR:
+                print('JOIN DIR (Case 2)')
             t_rotate = avl_rotate_single(t_, direction)
-            t_merge = avl_new_top(rest, t_rotate, k_, v_, 0)
-            return avl_rotate_single(t_merge, other_side)
+            if _DEBUG_JOIN_DIR:
+                ascii_tree(t_rotate, 't_rotate')
+            t_merge = avl_new_top(rest, t_rotate, k_, v_, other_side)
+            if _DEBUG_JOIN_DIR:
+                ascii_tree(t_merge, 't_merge')
+            new_root = avl_rotate_single(t_merge, other_side)
+            if _DEBUG_JOIN_DIR:
+                ascii_tree(new_root, 'new_root')
+            return new_root
     else:
         # Traverse down the spine in the appropriate direction
+        if _DEBUG_JOIN_DIR:
+            print('JOIN DIR (RECURSE)')
         if direction == 0:
             t_ = avl_join_dir_recursive(small, spine, key, value, direction)
         elif direction == 1:
             t_ = avl_join_dir_recursive(spine, t2, key, value, direction)
+        else:
+            assert False
         t__ = avl_new_top(t_, rest, k_, v_, direction)
         if height(t_) <= hrest + 1:
+            if _DEBUG_JOIN_DIR:
+                print('JOIN DIR (Case 3)')
             return t__
         else:
+            if _DEBUG_JOIN_DIR:
+                print('JOIN DIR (Case 4)')
             return avl_rotate_single(t__, other_side)
 
 
@@ -723,6 +772,24 @@ class AVLTree(ABCTree):
         other._count = 0
         return self
 
+    def join2_inplace(self, other):
+        minceil_key = -float('inf') if self.is_empty() else self.max_key()
+        maxfloor_key = float('inf') if other.is_empty() else other.min_key()
+        if not (minceil_key < maxfloor_key):
+            raise ValueError('invalid join2_inplace args %r < %r' % (
+                minceil_key, maxfloor_key))
+        t1 = self._root
+        t2 = other._root
+        new_count = self._count + other._count
+        top = avl_join2(t1, t2)
+        # Two trees are now joined inplace
+        self._root = top
+        self._count = new_count
+        # self assimilates all values from other
+        other._root = None
+        other._count = 0
+        return self
+
     def splice_inplace(self, start_key, stop_key):
         """
         Extracts a ordered slice from `root` and returns the inside and outside
@@ -761,15 +828,41 @@ class AVLTree(ABCTree):
             >>> pt.show_nx(g_out, fnum=1, pnum=(2, 2, (1, 1)))
             >>> ut.show_if_requested()
         """
-        t_inner, t_outer = avl_splice(self._root, start_key, stop_key)
+        if 0:
+            left, midright, start_flag, start_val = self.split_inplace(start_key)
+            middle, right, stop_flag, stop_val = midright.split_inplace(stop_key)
+            # Insert the start_key back into the middle part if it was removed
+            inner = middle
+            if start_flag:
+                inner[start_key] = start_val
+            # Recombine the outer parts
+            if stop_flag:
+                # print('left= %r' % (left,))
+                # print('right = %r' % (right,))
+                # print('stop_key = %r' % (stop_key,))
+                # print('stop_val = %r' % (stop_val,))
+                # join inplace seems to break here
+                return left, right
+                outer = left.join_inplace(right, stop_key, stop_val)
+                # outer = left.join2_inplace(right)
+                # outer[stop_key] = stop_val
+            else:
+                outer = left.join2_inplace(right)
+            self._root = outer._root
+            self._count = outer._count
+            outer = self
+            # return inner, outer
+        else:
+            inner = AVLTree()
+            outer = self
+            if start_key < stop_key:
+                t_inner, t_outer = avl_splice(self._root, start_key, stop_key)
 
-        inner = AVLTree()
-        inner._root = t_inner
-        inner._count = 0 if t_inner is None else -1  # FIXME
+                inner._root = t_inner
+                inner._count = 0 if t_inner is None else -1  # FIXME
 
-        outer = self
-        outer._root = t_outer
-        outer._count = 0 if t_outer is None else -1  # FIXME
+                outer._root = t_outer
+                outer._count = 0 if t_outer is None else -1  # FIXME
         return inner, outer
 
     def split_last_inplace(self):

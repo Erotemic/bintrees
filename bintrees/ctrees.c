@@ -7,6 +7,7 @@
  */
 
 #include "ctrees.h"
+#include "assert.h"
 #include <Python.h>
 
 #define LEFT 0
@@ -519,14 +520,13 @@ avl_new_top(node_t *t1, node_t *t2, PyObject *key, PyObject *value, int dir)
 static node_t *
 avl_join_dir_recursive(node_t *t1, node_t *t2, 
                        PyObject *key, PyObject *value,
-                       int dir)
+                       const int dir)
 {
-    int other_side;
     node_t *large, *small, *spine, *rest;
     PyObject *k_, *v_;
     int hsmall, hspine, hrest;
     node_t *t_rotate, *t_merge, *t_, *t__;
-    other_side = 1 - dir;
+    const int other_side = 1 - dir;
 
     if (dir == 0) {
         large = t2;
@@ -555,7 +555,7 @@ avl_join_dir_recursive(node_t *t1, node_t *t2,
         else {
             // Double rotation, but with a new node
             t_rotate = avl_single(t_, dir);
-            t_merge = avl_new_top(rest, t_rotate, k_, v_, 0);
+            t_merge = avl_new_top(rest, t_rotate, k_, v_, other_side);
             return avl_single(t_merge, other_side);
         }
     }
@@ -571,7 +571,7 @@ avl_join_dir_recursive(node_t *t1, node_t *t2,
         if (height(t_) <= hrest + 1){
             return t__;
         }
-        else{
+        else {
             return avl_single(t__, other_side);
         }
     }
@@ -579,6 +579,91 @@ avl_join_dir_recursive(node_t *t1, node_t *t2,
 
 
 #define avl_join_dir avl_join_dir_recursive
+
+
+static node_t *
+avl_insert_hack(node_t *root, PyObject *key, PyObject *value)
+{
+    // hack to not inplace change the root
+	if (root == NULL) {
+		root = avl_new_node(key, value);
+		if (root == NULL)
+            // got no memory
+            assert(0);
+            return NULL;
+	}
+	else {
+		node_t *it, *up[32];
+		int upd[32], top = 0;
+		int done = 0;
+		int cmp_res;
+
+		it = root;
+		/* Search for an empty link, save the path */
+		for (;;) {
+			/* Push direction and node onto stack */
+			cmp_res = ct_compare(KEY(it), key);
+			if (cmp_res == 0) {
+                // update existing item
+				Py_XDECREF(VALUE(it)); // release old value object
+				VALUE(it) = value; // set new value object
+				Py_INCREF(value); // take new value object
+				return root;
+			}
+			// upd[top] = it->data < data;
+			upd[top] = (cmp_res < 0);
+			up[top++] = it;
+
+			if (it->link[upd[top - 1]] == NULL)
+				break;
+			it = it->link[upd[top - 1]];
+		}
+
+		/* Insert a new node at the bottom of the tree */
+		it->link[upd[top - 1]] = avl_new_node(key, value);
+		if (it->link[upd[top - 1]] == NULL)
+            assert(0);
+			return NULL; // got no memory
+
+		/* Walk back up the search path */
+		while (--top >= 0 && !done) {
+			// int dir = (cmp_res < 0);
+			int lh, rh, max;
+
+			cmp_res = ct_compare(KEY(up[top]), key);
+
+			lh = height(up[top]->link[upd[top]]);
+			rh = height(up[top]->link[!upd[top]]);
+
+			/* Terminate or rebalance as necessary */
+			if (lh - rh == 0)
+				done = 1;
+			if (lh - rh >= 2) {
+				node_t *a = up[top]->link[upd[top]]->link[upd[top]];
+				node_t *b = up[top]->link[upd[top]]->link[!upd[top]];
+
+                // Determine which rotation is required
+				if (height( a ) >= height( b ))
+					up[top] = avl_single(up[top], !upd[top]);
+				else
+					up[top] = avl_double(up[top], !upd[top]);
+
+				/* Fix parent */
+				if (top != 0)
+					up[top - 1]->link[upd[top - 1]] = up[top];
+				else
+					root = up[0];
+				done = 1;
+			}
+			/* Update balance factors */
+			lh = height(up[top]->link[upd[top]]);
+			rh = height(up[top]->link[!upd[top]]);
+			max = avl_max(lh, rh);
+			BALANCE(up[top]) = max + 1;
+		}
+	}
+    return root;
+}
 
 
 static node_t *
@@ -592,7 +677,6 @@ avl_join(node_t *t1, node_t *t2, PyObject *key, PyObject *value)
      * Only the extern callers should ever create new nodes.
      */
     int h1, h2;
-    node_t **topaddr;
     node_t *top;
     if (t1 == NULL && t2 == NULL) {
         /*printf("Case 1\n");*/
@@ -601,14 +685,16 @@ avl_join(node_t *t1, node_t *t2, PyObject *key, PyObject *value)
     else if (t1 == NULL) {
         /*printf("Case 2\n");*/
         // FIXME keep track of count if possible
-        topaddr = &t2;
+        /*top = avl_insert_hack(t2, key, value);*/
+        node_t **topaddr = &t2;
         avl_insert(topaddr, key, value);
         top = *topaddr;
     }
     else if (t2 == NULL) {
         /*printf("Case 3\n");*/
-        topaddr = &t1;
-        avl_insert(&t1, key, value);
+        /*top = avl_insert_hack(t1, key, value);*/
+        node_t **topaddr = &t1;
+        avl_insert(topaddr, key, value);
         top = *topaddr;
     }
     else {
@@ -745,11 +831,10 @@ avl_split_last(node_t *root, PyObject **o_max_key, PyObject **o_max_value)
 
     O(log(n)) = O(height(root))
     */
-    node_t *left, *right;
     node_t *new_right, *new_root;
 
-    left = root->link[0];
-    right = root->link[1];
+    node_t *left = root->link[0];
+    node_t *right = root->link[1];
     if (right == NULL) {
         (*o_max_key) = KEY(root);
         (*o_max_value) = VALUE(root);
@@ -810,14 +895,14 @@ static void avl_splice(node_t *root, PyObject *start_key, PyObject *stop_key,
     /*print_node("right", right);*/
 
     // Insert the start_key back into the middle part if it was removed
-    if (start_flag) {
+    if (start_flag == 1) {
         (*t_inner) = avl_insert_recusrive(middle, start_key, start_val);
     }
     else {
         (*t_inner) = middle;
     }
     // Recombine the outer parts
-    if (stop_flag) {
+    if (stop_flag == 1) {
         (*t_outer) = avl_join(left, right, stop_key, stop_val);
     }
     else {

@@ -323,21 +323,24 @@ cdef class _AVLTree(_BaseTree):
     def splice_inplace(self, start_key, stop_key):
         cdef node_t *t_inner
         cdef node_t *t_outer
-        avl_splice_inplace(&self.root, start_key, stop_key, &t_inner, &t_outer)
-
-        # print('*t_inner = %r' % (t_inner,))
-        # print('*t_outer = %r' % (t_outer,))
-
-        # Create a new container for the inner part
         inner = FastAVLTree()
-        (<_AVLTree> inner).root = t_inner
-        (<_AVLTree> inner).count = -1 if t_inner != NULL else 0  # FIXME
-
-        # self becomes the outer part
-        # _AVLTree *outer = self
         outer = self
-        (<_AVLTree> outer).root = t_outer
-        (<_AVLTree> outer).count = -1 if t_outer != NULL else 0  # FIXME
+        # only splice if start < stop, otherwise do nothing
+        if start_key < stop_key:
+            avl_splice_inplace(&self.root, start_key, stop_key,
+                               &t_inner, &t_outer)
+
+            # print('*t_inner = %r' % (t_inner,))
+            # print('*t_outer = %r' % (t_outer,))
+
+            # Create a new container for the inner part
+            (<_AVLTree> inner).root = t_inner
+            (<_AVLTree> inner).count = -1 if t_inner != NULL else 0  # FIXME
+
+            # self becomes the outer part
+            # _AVLTree *outer = self
+            (<_AVLTree> outer).root = t_outer
+            (<_AVLTree> outer).count = -1 if t_outer != NULL else 0  # FIXME
         return inner, outer
 
 
