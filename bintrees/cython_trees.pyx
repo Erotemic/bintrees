@@ -307,7 +307,7 @@ cdef class _AVLTree(_BaseTree):
 
     def union_inplace(self, other):
         # Join self and other inplace
-        avl_join2_inplace(&self.root, &(<_AVLTree> other).root)
+        avl_union_inplace(&self.root, &(<_AVLTree> other).root)
         # All elements are assimilated into self
         self.count = -1  # FIXME we no longer know the number of items
         # Other is now empty

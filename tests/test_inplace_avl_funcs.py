@@ -238,8 +238,9 @@ def union_speed_test():
     numbers = np.arange(-num, num)
     rng = np.random.RandomState(0)
     rng.shuffle(numbers)
-    keys1 = numbers[0:num // 4:2]
-    keys2 = numbers[1:num // 4:2]
+    keys1 = numbers[0:num // 4:2].copy()
+    rng.shuffle(numbers)
+    keys2 = numbers[1:num // 4:2].copy()
 
     cls_list = [bintrees.AVLTree, bintrees.FastAVLTree]
 
@@ -266,7 +267,7 @@ def union_speed_test():
                     combo2 = self1.union_inplace(other1)
 
             # Time of copy + inplace union
-            for timer in ut.Timerit(n, name + ' union_inplace', verbose=verbose):
+            for timer in ut.Timerit(n, name + ' union_inplace + copy', verbose=verbose):
                 self1  = cls(list(zip(keys1, keys1)))
                 other1 = cls(list(zip(keys2, keys2)))
                 with timer:
@@ -633,13 +634,21 @@ def debug_union():
     import utool as ut
     import numpy as np
 
-    num = 50
+    num = 10
     # Generate two sets of random non-contiguous numbers
-    numbers = np.arange(-num, num)
+    numbers = np.arange(num * 2)
     rng = np.random.RandomState(0)
-    rng.shuffle(numbers)
-    keys1 = numbers[0:num // 4:2]
-    keys2 = numbers[1:num // 4:2]
+
+    disjoint = False
+    if disjoint:
+        rng.shuffle(numbers)
+        keys1 = numbers[0:num // 4:2]
+        keys2 = numbers[1:num // 4:2]
+    else:
+        rng.shuffle(numbers)
+        keys1 = numbers[0:num // 2].copy()
+        rng.shuffle(numbers)
+        keys2 = numbers[0:num // 2].copy()
 
     self1 = bintrees.AVLTree(list(zip(keys1, keys1)))
     other1 = bintrees.AVLTree(list(zip(keys2, keys2)))
@@ -648,6 +657,7 @@ def debug_union():
     other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
 
     new1 = self1.copy().union_inplace(other1.copy())
+    print('\n============\n')
     new2 = self2.copy().union_inplace(other2.copy())
 
     nxkeys = []
@@ -663,14 +673,14 @@ def debug_union():
     plot(other1, slice(0, 1), slice(1, 2))
     pt.set_title('Python Input2')
     plot(new1, slice(1, 2), slice(0, 2))
-    pt.set_xlabel('Python Union')
+    pt.set_xlabel('Python Inplace Union')
 
     plot(self2,  slice(0, 1), slice(2, 3))
     pt.set_title('Cython Input1')
     plot(other2, slice(0, 1), slice(3, 4))
     pt.set_title('Cython Input2')
     plot(new2, slice(1, 2), slice(2, 4))
-    pt.set_xlabel('Cython Union')
+    pt.set_xlabel('Cython Inplace Union')
     ut.show_if_requested()
 
 

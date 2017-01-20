@@ -581,89 +581,89 @@ avl_join_dir_recursive(node_t *t1, node_t *t2,
 #define avl_join_dir avl_join_dir_recursive
 
 
-static node_t *
-avl_insert_hack(node_t *root, PyObject *key, PyObject *value)
-{
-    // hack to not inplace change the root
-	if (root == NULL) {
-		root = avl_new_node(key, value);
-		if (root == NULL)
-            // got no memory
-            assert(0);
-            return NULL;
-	}
-	else {
-		node_t *it, *up[32];
-		int upd[32], top = 0;
-		int done = 0;
-		int cmp_res;
+/*static node_t *                                                      */
+/*avl_insert_hack(node_t *root, PyObject *key, PyObject *value)        */
+/*{                                                                    */
+/*    // hack to not inplace change the root                           */
+/*    if (root == NULL) {                                              */
+/*        root = avl_new_node(key, value);                             */
+/*        if (root == NULL)                                            */
+/*            // got no memory                                         */
+/*            assert(0);                                               */
+/*            return NULL;                                             */
+/*    }                                                                */
+/*    else {                                                           */
+/*        node_t *it, *up[32];                                         */
+/*        int upd[32], top = 0;                                        */
+/*        int done = 0;                                                */
+/*        int cmp_res;                                                 */
 
-		it = root;
-		/* Search for an empty link, save the path */
-		for (;;) {
-			/* Push direction and node onto stack */
-			cmp_res = ct_compare(KEY(it), key);
-			if (cmp_res == 0) {
-                // update existing item
-				Py_XDECREF(VALUE(it)); // release old value object
-				VALUE(it) = value; // set new value object
-				Py_INCREF(value); // take new value object
-				return root;
-			}
-			// upd[top] = it->data < data;
-			upd[top] = (cmp_res < 0);
-			up[top++] = it;
+/*        it = root;                                                   */
+/*        [> Search for an empty link, save the path <]                */
+/*        for (;;) {                                                   */
+/*            [> Push direction and node onto stack <]                 */
+/*            cmp_res = ct_compare(KEY(it), key);                      */
+/*            if (cmp_res == 0) {                                      */
+/*                // update existing item                              */
+/*                Py_XDECREF(VALUE(it)); // release old value object   */
+/*                VALUE(it) = value; // set new value object           */
+/*                Py_INCREF(value); // take new value object           */
+/*                return root;                                         */
+/*            }                                                        */
+/*            // upd[top] = it->data < data;                           */
+/*            upd[top] = (cmp_res < 0);                                */
+/*            up[top++] = it;                                          */
 
-			if (it->link[upd[top - 1]] == NULL)
-				break;
-			it = it->link[upd[top - 1]];
-		}
+/*            if (it->link[upd[top - 1]] == NULL)                      */
+/*                break;                                               */
+/*            it = it->link[upd[top - 1]];                             */
+/*        }                                                            */
 
-		/* Insert a new node at the bottom of the tree */
-		it->link[upd[top - 1]] = avl_new_node(key, value);
-		if (it->link[upd[top - 1]] == NULL)
-            assert(0);
-			return NULL; // got no memory
+/*        [> Insert a new node at the bottom of the tree <]            */
+/*        it->link[upd[top - 1]] = avl_new_node(key, value);           */
+/*        if (it->link[upd[top - 1]] == NULL)                          */
+/*            assert(0);                                               */
+/*            return NULL; // got no memory                            */
 
-		/* Walk back up the search path */
-		while (--top >= 0 && !done) {
-			// int dir = (cmp_res < 0);
-			int lh, rh, max;
+/*        [> Walk back up the search path <]                           */
+/*        while (--top >= 0 && !done) {                                */
+/*            // int dir = (cmp_res < 0);                              */
+/*            int lh, rh, max;                                         */
 
-			cmp_res = ct_compare(KEY(up[top]), key);
+/*            cmp_res = ct_compare(KEY(up[top]), key);                 */
 
-			lh = height(up[top]->link[upd[top]]);
-			rh = height(up[top]->link[!upd[top]]);
+/*            lh = height(up[top]->link[upd[top]]);                    */
+/*            rh = height(up[top]->link[!upd[top]]);                   */
 
-			/* Terminate or rebalance as necessary */
-			if (lh - rh == 0)
-				done = 1;
-			if (lh - rh >= 2) {
-				node_t *a = up[top]->link[upd[top]]->link[upd[top]];
-				node_t *b = up[top]->link[upd[top]]->link[!upd[top]];
+/*            [> Terminate or rebalance as necessary <]                */
+/*            if (lh - rh == 0)                                        */
+/*                done = 1;                                            */
+/*            if (lh - rh >= 2) {                                      */
+/*                node_t *a = up[top]->link[upd[top]]->link[upd[top]]; */
+/*                node_t *b = up[top]->link[upd[top]]->link[!upd[top]];*/
 
-                // Determine which rotation is required
-				if (height( a ) >= height( b ))
-					up[top] = avl_single(up[top], !upd[top]);
-				else
-					up[top] = avl_double(up[top], !upd[top]);
+/*                // Determine which rotation is required              */
+/*                if (height( a ) >= height( b ))                      */
+/*                    up[top] = avl_single(up[top], !upd[top]);        */
+/*                else                                                 */
+/*                    up[top] = avl_double(up[top], !upd[top]);        */
 
-				/* Fix parent */
-				if (top != 0)
-					up[top - 1]->link[upd[top - 1]] = up[top];
-				else
-					root = up[0];
-				done = 1;
-			}
-			/* Update balance factors */
-			lh = height(up[top]->link[upd[top]]);
-			rh = height(up[top]->link[!upd[top]]);
-			max = avl_max(lh, rh);
-			BALANCE(up[top]) = max + 1;
-		}
-	}
-    return root;
-}
+/*                [> Fix parent <]                                     */
+/*                if (top != 0)                                        */
+/*                    up[top - 1]->link[upd[top - 1]] = up[top];       */
+/*                else                                                 */
+/*                    root = up[0];                                    */
+/*                done = 1;                                            */
+/*            }                                                        */
+/*            [> Update balance factors <]                             */
+/*            lh = height(up[top]->link[upd[top]]);                    */
+/*            rh = height(up[top]->link[!upd[top]]);                   */
+/*            max = avl_max(lh, rh);                                   */
+/*            BALANCE(up[top]) = max + 1;                              */
+/*        }                                                            */
+/*    }                                                                */
+/*    return root;                                                     */
+/*}                                                                    */
 
 
 static node_t *
@@ -728,20 +728,22 @@ void print_node(const char* prefix, node_t *node){
 }
 
 
-#define debug_split 0
+#define DEBUG_SPLIT 0
 
 static void 
 avl_split(node_t *root, PyObject *key,
           node_t** o_part1, node_t** o_part2, 
           int *o_flag, PyObject **o_value) {
     // # TODO: keep track of the size of the sets being avl_split if possible
-#if debug_split
-    printf("--------- SPLIT \n");
+#if DEBUG_SPLIT
+    printf("--- SPLIT(C) \n");
     print_node("root", root);    
+    printf("key = %s\n", REPR(key));
 #endif
+    // node_t *split_node;
 
     if (root == NULL) {
-#if debug_split
+#if DEBUG_SPLIT
         printf("Split NULL\n");
 #endif
         (*o_part1) = root;
@@ -750,6 +752,8 @@ avl_split(node_t *root, PyObject *key,
         // FIXME: Py_None needs to be treated like any other object 
         // wrt to reference counts. Do we need to do anything else here?
         (*o_value) = Py_None;
+        // Did not find a node to splie
+        // split_node = NULL;
     }
     else {
         PyObject *t_key, *t_val;
@@ -759,49 +763,56 @@ avl_split(node_t *root, PyObject *key,
         t_key = KEY(root);
         t_val = VALUE(root);
         if (PyObject_RichCompareBool(key, t_key, Py_EQ) == 1) {
-#if debug_split
-            printf("Split Case 1\n");
+#if DEBUG_SPLIT
+            printf("Split Case Hit\n");
 #endif
             (*o_part1) = l;
             (*o_part2) = r;
             (*o_flag) = 1;
             (*o_value) = t_val;
-#if debug_split
-            print_node("part1", *o_part1);
-            print_node("part2", *o_part2);
-#endif
+
+            // We are effectively deleting this node
+            // Should its children be removed?
+            // LEFT_NODE(root) = NULL;
+            // RIGHT_NODE(root) = NULL;
+            // split_node = root;
         }
         else if (PyObject_RichCompareBool(key, t_key, Py_LT) == 1) {
-#if debug_split
-            printf("Split Case 2\n");
+#if DEBUG_SPLIT
+            printf("Split Case Recurse Down 1\n");
 #endif
             node_t *ll, *lr, *new_right;
-            /*ll, lr, b, bv = */
+            // split_node = 
             avl_split(l, key, &ll, &lr, o_flag, o_value);
+#if DEBUG_SPLIT
+            printf("Split Case Recurse Up 1\n");
+#endif
             new_right = avl_join(lr, r, t_key, t_val);
             (*o_part1) = ll;
             (*o_part2) = new_right;
-#if debug_split
-            print_node("part1", *o_part1);
-            print_node("part2", *o_part2);
-#endif
         }
         else {
-#if debug_split
-            printf("Split Case 3\n");
+#if DEBUG_SPLIT
+            printf("Split Case Recurse 2\n");
 #endif
             node_t *rl, *rr, *new_left;
-            /*rl, rr, b, bv = */
+            // split_node = 
             avl_split(r, key, &rl, &rr, o_flag, o_value);
+#if DEBUG_SPLIT
+            printf("Split Case Recurse Up 2\n");
+#endif
             new_left = avl_join(l, rl, t_key, t_val);
             (*o_part1) = new_left;
             (*o_part2) = rr;
-#if debug_split
+        }
+    }
+#if DEBUG_SPLIT
             print_node("part1", *o_part1);
             print_node("part2", *o_part2);
 #endif
-        }
-    }
+    // I think split should return the node that it removes
+    // and potentially delete it?
+    // return split_node
 }
 
 
@@ -920,6 +931,48 @@ static void avl_splice(node_t *root, PyObject *start_key, PyObject *stop_key,
     /*printf("t_inner %p\n", t_inner);  */
 }
 
+#define DEBUG_UNION 0
+
+
+
+static node_t *
+ avl_union(node_t *t1, node_t *t2){
+    /*
+     * O(m log((n/m) + 1))                                   
+     * This is sublinear and good improvement over O(mlog(n))
+     */
+#if DEBUG_UNION
+     printf("------- UNION (C)\n");             
+     print_node("t1", t1);
+     print_node("t2", t2);
+#endif
+
+    if (t1 == NULL) {
+        return t2;
+    }
+    else if (t2 == NULL){
+        return t1;
+    }
+    else {
+        node_t *left2 = LEFT_NODE(t2);
+        node_t *right2 = RIGHT_NODE(t2);
+        PyObject *key2 = KEY(t2);
+        PyObject *val2 = VALUE(t2);
+
+        node_t *left1, *right1;
+        int flag;
+        PyObject *val1;
+        avl_split(t1, key2, &left1, &right1, &flag, &val1);
+        // if flag: dereference val? (Should things be dereferenced in split?)
+        // Split should return the node it removes I think
+
+        node_t *left_combo = avl_union(left1, left2);
+        node_t *right_combo = avl_union(right1, right2);
+        return avl_join(left_combo, right_combo, key2, val2);
+    }
+ }
+
+
 
 
 // --- Extern Funcs ---
@@ -1002,7 +1055,7 @@ extern void
 avl_union_inplace(node_t **t1_addr, node_t **t2_addr)
 {
     node_t *top;
-    top = avl_join2(*t1_addr, *t2_addr);
+    top = avl_union(*t1_addr, *t2_addr);
     // Reassign root value item
 	(*t1_addr) = top;
     // The nodes in t2 have been assimilated into t1. 

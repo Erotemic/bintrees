@@ -189,22 +189,32 @@ def avl_difference(t1, t2):
         return avl_join2(tl, tr)
 
 
+DEBUG_UNION = 0
+
+
 def avl_union(t1, t2):
     """
     O(m log((n/m) + 1))
     This is sublinear and good improvement over O(mlog(n))
     """
+    if DEBUG_UNION:
+        print('--- UNION (PY)')
+        print('t1 = %r' % (None if t1 is None else t1.key,))
+        print('t2 = %r' % (None if t2 is None else t2.key,))
     if t1 is None:
         return t2
     elif t2 is None:
         return t1
     else:
-        l2, r2 = t2.left, t2.right
-        k2, v2 = t2.key, t2.value
-        l1, r1, b, bv = avl_split(t1, k2)
-        tl = avl_union(l1, l2)
-        tr = avl_union(r1, r2)
-        return avl_join(tl, tr, k2, v2)
+        left2, right2 = t2.left, t2.right
+        key2, val2 = t2.key, t2.value
+        left1, right1, flag, val1 = avl_split(t1, key2)
+        left_combo = avl_union(left1, left2)
+        right_combo = avl_union(right1, right2)
+        return avl_join(left_combo, right_combo, key2, val2)
+
+
+DEBUG_SPLIT = 0
 
 
 def avl_split(root, key):
@@ -222,34 +232,55 @@ def avl_split(root, key):
             b is a flag indicating if key in root
             v is the value of the key if it existed
     """
+    if DEBUG_SPLIT:
+        print('-- SPLIT (PY)')
+        print('root = %r' % (root if root is None else root.key,))
+        print('key = %r' % (key,))
+        pass
     # TODO: keep track of the size of the sets being avl_split if possible
     if root is None:
+        if DEBUG_SPLIT:
+            print("Split Case None")
         part1 = root
         part2 = root
-        return (part1, part2, False, None)
+        b = False
+        bv = None
     else:
         l, r = root.left, root.right
         t_key = root.key
         t_val = root.value
         if key == t_key:
+            if DEBUG_SPLIT:
+                print('Split Case Hit')
             part1 = l
             part2 = r
-            return (part1, part2, True, t_val)
+            b = True
+            bv = t_val
         elif key < t_key:
+            if DEBUG_SPLIT:
+                print('Split Case Recurse 1')
             ll, lr, b, bv = avl_split(l, key)
+            if DEBUG_SPLIT:
+                print('Split Case Up 1')
             new_right = avl_join(lr, r, t_key, t_val)
             part1 = ll
             part2 = new_right
-            return (part1, part2, b, bv)
         else:
+            if DEBUG_SPLIT:
+                print('Split Case Recurse 2')
             rl, rr, b, bv = avl_split(r, key)
+            if DEBUG_SPLIT:
+                print('Split Case Up 2')
             new_left = avl_join(l, rl, t_key, t_val)
             part1 = new_left
             part2 = rr
-            return (part1, part2, b, bv)
+    if DEBUG_SPLIT:
+        print('part1 = %r' % (None if part1 is None else part1.key,))
+        print('part2 = %r' % (None if part2 is None else part2.key,))
+    return (part1, part2, b, bv)
 
 
-_DEBUG_JOIN = 0
+DEBUG_JOIN = 0
 
 
 def avl_join(t1, t2, key, value):
@@ -260,40 +291,40 @@ def avl_join(t1, t2, key, value):
         O(abs(r(t1) - r(t2)))
         O(abs(height(t1) - height(t2)))
     """
-    if _DEBUG_JOIN:
+    if DEBUG_JOIN:
         print('-- JOIN key=%r' % (key,))
 
     if t1 is None and t2 is None:
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 1')
         return avl_new_top(None, None, key, value, 0)
     elif t1 is None:
         # FIXME keep track of count if possible
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 2')
         return avl_insert_iterative(t2, key, value)
     elif t2 is None:
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 3')
         return avl_insert_iterative(t1, key, value)
 
     h1 = height(t1)
     h2 = height(t2)
     if h1 > h2 + 1:
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 4')
         top = avl_join_dir(t1, t2, key, value, 1)
     elif h2 > h1 + 1:
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 5')
             ascii_tree(t1)
             ascii_tree(t2)
 
         top = avl_join_dir(t1, t2, key, value, 0)
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             ascii_tree(top)
     else:
-        if _DEBUG_JOIN:
+        if DEBUG_JOIN:
             print('Join Case 6')
         # Insert at the top of the tree
         top = avl_new_top(t1, t2, key, value, 0)
