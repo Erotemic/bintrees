@@ -311,7 +311,7 @@ cdef class _AVLTree(_BaseTree):
         right = FastAVLTree()
         (<_AVLTree> right).root = t_right
         (<_AVLTree> right).count = -1 if t_right != NULL else 0  # FIXME
-        return left, right, flag, value
+        return left, right, bool(flag), value
 
     def split_last_inplace(self):
         if self.is_empty():
@@ -328,16 +328,16 @@ cdef class _AVLTree(_BaseTree):
         # print('*t_inner = %r' % (t_inner,))
         # print('*t_outer = %r' % (t_outer,))
 
+        # Create a new container for the inner part
+        inner = FastAVLTree()
+        (<_AVLTree> inner).root = t_inner
+        (<_AVLTree> inner).count = -1 if t_inner != NULL else 0  # FIXME
+
         # self becomes the outer part
         # _AVLTree *outer = self
         outer = self
         (<_AVLTree> outer).root = t_outer
         (<_AVLTree> outer).count = -1 if t_outer != NULL else 0  # FIXME
-
-        # Create a new container for the inner part
-        inner = FastAVLTree()
-        (<_AVLTree> inner).root = t_inner
-        (<_AVLTree> inner).count = -1 if t_inner != NULL else 0  # FIXME
         return inner, outer
 
 

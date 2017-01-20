@@ -492,7 +492,7 @@ class _ABCTree(object):
                 node = node.right
         return yielder
 
-    def to_networkx(self, labels=None):
+    def to_networkx(self, labels=None, edge_labels=False):
         """ Get a networkx representation of the binary search tree. """
         import networkx as nx
         graph = nx.DiGraph()
@@ -508,12 +508,14 @@ class _ABCTree(object):
                 v = node.left.key
                 graph.add_node(v)
                 graph.add_edge(u, v)
-                graph.edge[u][v]['label'] = 'L'
+                if edge_labels:
+                    graph.edge[u][v]['label'] = 'L'
             if node.right is not None:
                 v = node.right.key
                 graph.add_node(v)
                 graph.add_edge(u, v)
-                graph.edge[u][v]['label'] = 'R'
+                if edge_labels:
+                    graph.edge[u][v]['label'] = 'R'
         return graph
 
 

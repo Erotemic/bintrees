@@ -642,20 +642,28 @@ void print_node(const char* prefix, node_t *node){
 }
 
 
+#define debug_split 0
+
 static void 
 avl_split(node_t *root, PyObject *key,
           node_t** o_part1, node_t** o_part2, 
           int *o_flag, PyObject **o_value) {
     // # TODO: keep track of the size of the sets being avl_split if possible
-    /*printf("--------- SPLIT \n");*/
-    /*print_node("root", root);    */
+#if debug_split
+    printf("--------- SPLIT \n");
+    print_node("root", root);    
+#endif
 
     if (root == NULL) {
-        /*printf("Split NULL\n");*/
+#if debug_split
+        printf("Split NULL\n");
+#endif
         (*o_part1) = root;
         (*o_part2) = root;
         (*o_flag) = 0;
-        (*o_value) = NULL;
+        // FIXME: Py_None needs to be treated like any other object 
+        // wrt to reference counts. Do we need to do anything else here?
+        (*o_value) = Py_None;
     }
     else {
         PyObject *t_key, *t_val;
@@ -664,38 +672,48 @@ avl_split(node_t *root, PyObject *key,
         r = RIGHT_NODE(root);
         t_key = KEY(root);
         t_val = VALUE(root);
-        if (key == t_key) {
-            /*printf("Split Case 1\n");*/
+        if (PyObject_RichCompareBool(key, t_key, Py_EQ) == 1) {
+#if debug_split
+            printf("Split Case 1\n");
+#endif
             (*o_part1) = l;
             (*o_part2) = r;
             (*o_flag) = 1;
             (*o_value) = t_val;
-            /*print_node("part1", *o_part1);*/
-            /*print_node("part2", *o_part2);*/
+#if debug_split
+            print_node("part1", *o_part1);
+            print_node("part2", *o_part2);
+#endif
         }
-        else if (PyObject_RichCompareBool(key, t_key, Py_LT)) {
-            /*printf("Split Case 2\n");*/
+        else if (PyObject_RichCompareBool(key, t_key, Py_LT) == 1) {
+#if debug_split
+            printf("Split Case 2\n");
+#endif
             node_t *ll, *lr, *new_right;
             /*ll, lr, b, bv = */
             avl_split(l, key, &ll, &lr, o_flag, o_value);
             new_right = avl_join(lr, r, t_key, t_val);
             (*o_part1) = ll;
             (*o_part2) = new_right;
-            /*return (ll, new_right, b, bv);*/
-            /*print_node("part1", *o_part1);*/
-            /*print_node("part2", *o_part2);*/
+#if debug_split
+            print_node("part1", *o_part1);
+            print_node("part2", *o_part2);
+#endif
         }
         else {
-            /*printf("Split Case 3\n");*/
+#if debug_split
+            printf("Split Case 3\n");
+#endif
             node_t *rl, *rr, *new_left;
             /*rl, rr, b, bv = */
             avl_split(r, key, &rl, &rr, o_flag, o_value);
             new_left = avl_join(l, rl, t_key, t_val);
             (*o_part1) = new_left;
             (*o_part2) = rr;
-            /*return (new_left, rr, b, bv);*/
-            /*print_node("part1", *o_part1);*/
-            /*print_node("part2", *o_part2);*/
+#if debug_split
+            print_node("part1", *o_part1);
+            print_node("part2", *o_part2);
+#endif
         }
     }
 }

@@ -313,14 +313,41 @@ def test_splice_cases(mode):
                     yield size, start, stop
 
     test_cases = list(test_case_gen())
-    # test_cases = [[9, 3, 6]]
 
     for size, start, stop in ut.ProgIter(test_cases, bs=0, label=label):
         print('  size,start,stop = %r,%r,%r' % (size, start, stop,))
+        size = 10
+        start = 3
+        stop = 7
         keys = np.arange(size)
+
         self  = _AVLTree_cls(list(zip(keys, keys)))
-        inside, outside = self.splice_inplace(start, stop)
-        assert outside is self
+        self_copy = self.copy()
+        inside, outside = self_copy.splice_inplace(start, stop)
+
+        slow  = bintrees.AVLTree(list(zip(keys, keys)))
+        slow.splice_inplace(start, stop)
+        # self.split_inplace(3)
+
+        inside.recount()
+        outside.recount()
+
+        assert outside is self_copy
+        assert_avl_invariants(inside)
+        assert_avl_invariants(outside)
+
+        invals = np.array(list(inside.values()))
+        # outvals = np.array(list(inside.values()))
+
+        import utool
+        with utool.embed_on_exception_context:
+            assert len(invals) == 0 or np.all(invals >= start)
+            assert len(invals) == 0 or np.all(invals < stop)
+
+        assert len(inside) + len(outside) == len(self)
+        assert set(self.difference(outside).keys()) == set(inside.keys())
+        assert len(inside.intersection(outside)) == 0
+
         # assert_avl_invariants(new)
         # assert len(new) == len(keys1) + len(keys2) + 1
         # assert self is new
@@ -348,17 +375,25 @@ def test_cython_join_cases():
     self.join_inplace(other, key, value)
 
 
-def test_split_cases():
+def test_split_cases(mode='cython'):
     """
     CommandLine:
-        python -m bintrees.avltree test_split_cases
+        python -m bintrees.avltree test_split_cases 'python'
+        python -m bintrees.avltree test_split_cases 'cython'
     """
     # import utool as ut
     import numpy as np
+    import bintrees
+    if mode.lower() == 'python':
+        _AVLTree_cls = bintrees.AVLTree
+    elif mode.lower() == 'cython':
+        _AVLTree_cls = bintrees.FastAVLTree
+    else:
+        raise ValueError(mode)
 
     keys = list(range(0, 100, 2))
     for key in range(-2, max(keys) + 2):
-        self = AVLTree(list(zip(keys, keys)))
+        self = _AVLTree_cls(list(zip(keys, keys)))
         tree1, tree2, b, v = self.split_inplace(key)
         try:
             assert b == (key in keys)
@@ -672,12 +707,17 @@ def avl_split(root, key):
             b is a flag indicating if key in root
             v is the value of the key if it existed
     """
-    # print('----- SPLIT -')
-    # print('root = %r' % (None if root is None else root.key,))
+    debug_split = 0
+    if debug_split:
+        print('----- SPLIT -')
+        print('root = %r' % (None if root is None else root.key,))
     # TODO: keep track of the size of the sets being avl_split if possible
     if root is None:
-        # print('Split NULL')
-        return (root, root, False, None)
+        if debug_split:
+            print('Split NULL')
+        part1 = root
+        part2 = root
+        return (part1, part2, False, None)
     else:
         l, r = root.left, root.right
         t_key = root.key
@@ -685,27 +725,32 @@ def avl_split(root, key):
         if key == t_key:
             part1 = l
             part2 = r
-            # print('Split Case1')
-            # print('part1 = %r' % (None if part1 is None else part1.key,))
-            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            if debug_split:
+                print('Split Case1')
+                print('part1 = %r' % (None if part1 is None else part1.key,))
+                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, True, t_val)
         elif key < t_key:
-            # print('Split Case2')
+            if debug_split:
+                print('Split Case2')
             ll, lr, b, bv = avl_split(l, key)
             new_right = avl_join(lr, r, t_key, t_val)
             part1 = ll
             part2 = new_right
-            # print('part1 = %r' % (None if part1 is None else part1.key,))
-            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            if debug_split:
+                print('part1 = %r' % (None if part1 is None else part1.key,))
+                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, b, bv)
         else:
-            # print('Split Case3')
+            if debug_split:
+                print('Split Case3')
             rl, rr, b, bv = avl_split(r, key)
             new_left = avl_join(l, rl, t_key, t_val)
             part1 = new_left
             part2 = rr
-            # print('part1 = %r' % (None if part1 is None else part1.key,))
-            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            if debug_split:
+                print('part1 = %r' % (None if part1 is None else part1.key,))
+                print('part2 = %r' % (None if part2 is None else part2.key,))
             return (part1, part2, b, bv)
 
 
