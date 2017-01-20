@@ -295,6 +295,25 @@ cdef class _AVLTree(_BaseTree):
         (<_AVLTree> other).count = 0
         return self
 
+    def join2_inplace(self, other):
+        # Join self and other inplace
+        avl_join2_inplace(&self.root, &(<_AVLTree> other).root)
+        # All elements are assimilated into self
+        new_count = self.count + other.count + 1
+        self.count = new_count
+        # Other is now empty
+        (<_AVLTree> other).count = 0
+        return self
+
+    def union_inplace(self, other):
+        # Join self and other inplace
+        avl_join2_inplace(&self.root, &(<_AVLTree> other).root)
+        # All elements are assimilated into self
+        self.count = -1  # FIXME we no longer know the number of items
+        # Other is now empty
+        (<_AVLTree> other).count = 0
+        return self
+
     def split_inplace(self, key):
         cdef int flag
         cdef node_t *t_right;

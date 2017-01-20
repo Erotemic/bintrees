@@ -717,7 +717,9 @@ class AVLTree(ABCTree):
 
     def join_inplace(self, other, key, value):
         """
-        Returns all elements from t1 and t2 as well as (key, val)
+        Returns all elements from self and other as well as (key, val).
+        All elements in other must be greater than all elements in self.
+        The new key must be between the two values.
 
         Runs in time O(|height(t1) − height(t2)|)
 
@@ -729,7 +731,6 @@ class AVLTree(ABCTree):
             language. Technical Report CSTR 92-10, University of
             Southampton, 1992
             http://groups.csail.mit.edu/mac/users/adams/BB/92-10.ps
-
 
         CommandLine:
             python -m bintrees.avltree AVLTree.join_inplace --show
@@ -772,7 +773,34 @@ class AVLTree(ABCTree):
         other._count = 0
         return self
 
+    def union_inplace(self, other):
+        """
+        Inplace union of two trees. There are no restrictions on the items
+        being unioned.
+
+        Runs in time O(m log((n / m) + 1))
+
+        Args:
+            self (AVLTree): tree of size n - union will happen inplace
+            other (AVLTree): tree of size m - this tree is destroyed
+        """
+        t1 = self._root
+        t2 = other._root
+        top = avl_union(t1, t2)
+        # Two trees are now unioned inplace
+        self._root = top
+        other._root = None
+        self._count = -1  # FIXME we no longer know the number of items
+        other._count = 0
+        return self
+
     def join2_inplace(self, other):
+        """
+        Unions elements from self and other inplace.
+        All elements in other must be greater than all elements in self.
+
+        Runs in time O(log(n) + log(m))
+        """
         minceil_key = -float('inf') if self.is_empty() else self.max_key()
         maxfloor_key = float('inf') if other.is_empty() else other.min_key()
         if not (minceil_key < maxfloor_key):
@@ -896,26 +924,6 @@ class AVLTree(ABCTree):
         self._root = None
         self._count = 0
         return tree1, tree2, b, bv
-
-    def union_inplace(self, other):
-        """
-        Inplace union of two trees.
-
-        Runs in time O(m log((n / m) + 1))
-
-        Args:
-            self (AVLTree): tree of size n - union will happen inplace
-            other (AVLTree): tree of size m - this tree is destroyed
-        """
-        t1 = self._root
-        t2 = other._root
-        top = avl_union(t1, t2)
-        # Two trees are now unioned inplace
-        self._root = top
-        other._root = None
-        self._count = self._count
-        other._count = 0
-        return self
 
 
 if __name__ == '__main__':

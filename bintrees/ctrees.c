@@ -972,7 +972,7 @@ avl_splice_inplace(node_t **rootaddr, PyObject *start_key, PyObject *stop_key,
 }
 
 
-extern int
+extern void
 avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value)
 {
     node_t *top;
@@ -982,9 +982,33 @@ avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *va
     // The nodes in t2 have been assimilated into t1. 
     // t2 should no longer contain any values
 	(*t2_addr) = NULL;
-    return 0;
 }
 
+
+extern void
+avl_join2_inplace(node_t **t1_addr, node_t **t2_addr)
+{
+    node_t *top;
+    top = avl_join2(*t1_addr, *t2_addr);
+    // Reassign root value item
+	(*t1_addr) = top;
+    // The nodes in t2 have been assimilated into t1. 
+    // t2 should no longer contain any values
+	(*t2_addr) = NULL;
+}
+
+
+extern void
+avl_union_inplace(node_t **t1_addr, node_t **t2_addr)
+{
+    node_t *top;
+    top = avl_join2(*t1_addr, *t2_addr);
+    // Reassign root value item
+	(*t1_addr) = top;
+    // The nodes in t2 have been assimilated into t1. 
+    // t2 should no longer contain any values
+	(*t2_addr) = NULL;
+}
 
 
 

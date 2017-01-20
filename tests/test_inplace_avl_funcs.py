@@ -225,6 +225,83 @@ def test_split_cases():
             assert res == res0
 
 
+def union_speed_test():
+    """
+    CommandLine:
+        python ~/code/bintrees/tests/test_inplace_avl_funcs.py union_speed_test
+    """
+    import utool as ut
+    import numpy as np
+    import bintrees
+    num = 10000
+    # Generate two sets of random non-contiguous numbers
+    numbers = np.arange(-num, num)
+    rng = np.random.RandomState(0)
+    rng.shuffle(numbers)
+    keys1 = numbers[0:num // 4:2]
+    keys2 = numbers[1:num // 4:2]
+
+    cls_list = [bintrees.AVLTree, bintrees.FastAVLTree]
+
+    errors = []
+
+    # Test Union - General sets
+    for n in [1, 10]:
+        verbose = n > 1
+        for cls in cls_list:
+            name = cls.__name__
+
+            # Time of origional union
+            for timer in ut.Timerit(n, name + ' union', verbose=verbose):
+                self2  = AVLTree(list(zip(keys1, keys1)))
+                other2 = AVLTree(list(zip(keys2, keys2)))
+                with timer:
+                    combo1 = self2.union(other2)
+
+            # Time of inplace union
+            for timer in ut.Timerit(n, name + ' union_inplace', verbose=verbose):
+                self1  = cls(list(zip(keys1, keys1)))
+                other1 = cls(list(zip(keys2, keys2)))
+                with timer:
+                    combo2 = self1.union_inplace(other1)
+
+            # Time of copy + inplace union
+            for timer in ut.Timerit(n, name + ' union_inplace', verbose=verbose):
+                self1  = cls(list(zip(keys1, keys1)))
+                other1 = cls(list(zip(keys2, keys2)))
+                with timer:
+                    combo3 = self1.copy().union_inplace(other1.copy())
+
+            try:
+                combo_keys1 = list(combo1.keys())
+                combo_keys2 = list(combo2.keys())
+                assert combo_keys1 == combo_keys2
+            except AssertionError as ex:
+                errors.append(ex)
+                print('Error for')
+                print(' * cls = %r' % (cls,))
+                print(ut.repr4(ut.set_overlaps(set(combo1), set(combo2))))
+                print('len(combo_keys1) = %r' % (len(combo_keys1),))
+                print('len(combo_keys2) = %r' % (len(combo_keys2),))
+                import utool
+                utool.embed()
+
+            try:
+                assert list(combo1.keys()) == list(combo3.keys())
+            except AssertionError as ex:
+                errors.append(ex)
+                print('Error for')
+                print(' * cls = %r' % (cls,))
+                print(ut.repr4(ut.set_overlaps(set(combo1), set(combo3))))
+
+        assert not errors, 'there were errors'
+        # assert list(combo2.keys()) == list(combo3.keys())
+        #     assert set(new2) == set(new1)
+        #     set(new2) - set(new1)
+        # except AssertionError:
+        #     print(ut.repr4(ut.set_overlaps(set(new1), set(new2))))
+
+
 def speed_test():
     """
     CommandLine:
@@ -236,6 +313,7 @@ def speed_test():
         >>> result = speed_test()
         >>> print(result)
     """
+    import bintrees
     import numpy as np
     import utool as ut
     low = 1000
@@ -243,7 +321,6 @@ def speed_test():
     keys1 = np.arange(low)
     keys2 = np.arange(high) + 2 * low
     key = value = int(keys1.max() + keys2.min()) // 2
-    import bintrees
 
     # Test Join - Assume disjoint
     for n in [1, 10]:
@@ -288,34 +365,6 @@ def speed_test():
                 new2 = self2
                 new2[key] = value
         assert set(new2) == set(new1)
-
-    return
-
-    # Test Union - General sets
-    for n in [1, 10]:
-        for timer in ut.Timerit(n, 'NEW avl_union with avl_join', verbose=n > 1):
-            self1  = AVLTree(list(zip(keys1, keys1)))
-            other1 = AVLTree(list(zip(keys2, keys2)))
-            with timer:
-                new1 = self1.union_inplace(other1)
-
-        for timer in ut.Timerit(n, 'ORIG fast union', verbose=n > 1):
-            self2  = bintrees.FastAVLTree(list(zip(keys1, keys1)))
-            other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
-            with timer:
-                new2 = self2.union(other2)
-
-        for timer in ut.Timerit(n, 'ORIG slow union', verbose=n > 1):
-            self2  = AVLTree(list(zip(keys1, keys1)))
-            other2 = AVLTree(list(zip(keys2, keys2)))
-            with timer:
-                new2 = self2.union(other2)
-
-        try:
-            assert set(new2) == set(new1)
-            set(new2) - set(new1)
-        except AssertionError:
-            print(ut.repr4(ut.set_overlaps(set(new1), set(new2))))
 
 
 def ascii_tree(root):
@@ -398,18 +447,18 @@ def debug_join2():
     self1 = bintrees.AVLTree(list(zip(keys1, keys1)))
     other1 = bintrees.AVLTree(list(zip(keys2, keys2)))
 
-    # self2 = bintrees.FastAVLTree(list(zip(keys1, keys1)))
-    # other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+    self2 = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+    other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
 
     new1 = self1.copy().join2_inplace(other1.copy())
-    # new2 = self2.copy().join_inplace(other2.copy(), key, value)
+    new2 = self2.copy().join2_inplace(other2.copy())
 
     nxkeys = []
     # ['key', 'balance']
     import plottool as pt
 
     def plot(self, slx, sly):
-        pnum = (2, 2, (slx, sly))
+        pnum = (2, 4, (slx, sly))
         pt.show_nx(self.to_networkx(nxkeys), fnum=1, pnum=pnum)
 
     plot(self1,  slice(0, 1), slice(0, 1))
@@ -417,10 +466,10 @@ def debug_join2():
     plot(new1, slice(1, 2), slice(0, 2))
     pt.set_xlabel('Python Join2')
 
-    # plot(self2,  slice(0, 1), slice(2, 3))
-    # plot(other2, slice(0, 1), slice(3, 4))
-    # plot(new2, slice(1, 2), slice(2, 4))
-    # pt.set_xlabel('Cython Join')
+    plot(self2,  slice(0, 1), slice(2, 3))
+    plot(other2, slice(0, 1), slice(3, 4))
+    plot(new2, slice(1, 2), slice(2, 4))
+    pt.set_xlabel('Cython Join2')
     ut.show_if_requested()
 
 
@@ -572,6 +621,56 @@ def debug_join():
     plot(other2, slice(0, 1), slice(3, 4))
     plot(new2, slice(1, 2), slice(2, 4))
     pt.set_xlabel('Cython Join on %r' % (key,))
+    ut.show_if_requested()
+
+
+def debug_union():
+    """
+    CommandLine:
+        python -m tests.test_inplace_avl_funcs debug_union --show
+    """
+    import bintrees
+    import utool as ut
+    import numpy as np
+
+    num = 50
+    # Generate two sets of random non-contiguous numbers
+    numbers = np.arange(-num, num)
+    rng = np.random.RandomState(0)
+    rng.shuffle(numbers)
+    keys1 = numbers[0:num // 4:2]
+    keys2 = numbers[1:num // 4:2]
+
+    self1 = bintrees.AVLTree(list(zip(keys1, keys1)))
+    other1 = bintrees.AVLTree(list(zip(keys2, keys2)))
+
+    self2 = bintrees.FastAVLTree(list(zip(keys1, keys1)))
+    other2 = bintrees.FastAVLTree(list(zip(keys2, keys2)))
+
+    new1 = self1.copy().union_inplace(other1.copy())
+    new2 = self2.copy().union_inplace(other2.copy())
+
+    nxkeys = []
+    # ['key', 'balance']
+    import plottool as pt
+
+    def plot(self, slx, sly):
+        pnum = (2, 4, (slx, sly))
+        pt.show_nx(self.to_networkx(nxkeys, edge_labels=True), fnum=1, pnum=pnum)
+
+    plot(self1,  slice(0, 1), slice(0, 1))
+    pt.set_title('Python Input1')
+    plot(other1, slice(0, 1), slice(1, 2))
+    pt.set_title('Python Input2')
+    plot(new1, slice(1, 2), slice(0, 2))
+    pt.set_xlabel('Python Union')
+
+    plot(self2,  slice(0, 1), slice(2, 3))
+    pt.set_title('Cython Input1')
+    plot(other2, slice(0, 1), slice(3, 4))
+    pt.set_title('Cython Input2')
+    plot(new2, slice(1, 2), slice(2, 4))
+    pt.set_xlabel('Cython Union')
     ut.show_if_requested()
 
 

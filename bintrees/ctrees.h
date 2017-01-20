@@ -44,7 +44,9 @@ int avl_insert(node_t **root, PyObject *key, PyObject *value);
 int avl_remove(node_t **root, PyObject *key);
 
 /* avl-tree join-based inplace functions */
-int avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value);
+void avl_join_inplace(node_t **t1_addr, node_t **t2_addr, PyObject *key, PyObject *value);
+void avl_join2_inplace(node_t **t1_addr, node_t **t2_addr);
+void avl_union_inplace(node_t **t1_addr, node_t **t2_addr);
 void avl_splice_inplace(node_t **root, PyObject *start, PyObject *stop, node_t **t_inner, node_t **t_outer);
 PyObject *avl_split_inplace(node_t **root, PyObject *key, int* o_flag, node_t **t_right);
 PyObject *avl_split_last_inplace(node_t **root);
