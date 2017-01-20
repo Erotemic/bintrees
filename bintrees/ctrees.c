@@ -647,11 +647,11 @@ avl_split(node_t *root, PyObject *key,
           node_t** o_part1, node_t** o_part2, 
           int *o_flag, PyObject **o_value) {
     // # TODO: keep track of the size of the sets being avl_split if possible
-    printf("--------- SPLIT \n");
-    print_node("root", root);
+    /*printf("--------- SPLIT \n");*/
+    /*print_node("root", root);    */
 
     if (root == NULL) {
-        printf("Split NULL\n");
+        /*printf("Split NULL\n");*/
         (*o_part1) = root;
         (*o_part2) = root;
         (*o_flag) = 0;
@@ -665,16 +665,16 @@ avl_split(node_t *root, PyObject *key,
         t_key = KEY(root);
         t_val = VALUE(root);
         if (key == t_key) {
-            printf("Split Case 1\n");
+            /*printf("Split Case 1\n");*/
             (*o_part1) = l;
             (*o_part2) = r;
             (*o_flag) = 1;
             (*o_value) = t_val;
-            print_node("part1", *o_part1);
-            print_node("part2", *o_part2);
+            /*print_node("part1", *o_part1);*/
+            /*print_node("part2", *o_part2);*/
         }
         else if (PyObject_RichCompareBool(key, t_key, Py_LT)) {
-            printf("Split Case 2\n");
+            /*printf("Split Case 2\n");*/
             node_t *ll, *lr, *new_right;
             /*ll, lr, b, bv = */
             avl_split(l, key, &ll, &lr, o_flag, o_value);
@@ -682,11 +682,11 @@ avl_split(node_t *root, PyObject *key,
             (*o_part1) = ll;
             (*o_part2) = new_right;
             /*return (ll, new_right, b, bv);*/
-            print_node("part1", *o_part1);
-            print_node("part2", *o_part2);
+            /*print_node("part1", *o_part1);*/
+            /*print_node("part2", *o_part2);*/
         }
         else {
-            printf("Split Case 3\n");
+            /*printf("Split Case 3\n");*/
             node_t *rl, *rr, *new_left;
             /*rl, rr, b, bv = */
             avl_split(r, key, &rl, &rr, o_flag, o_value);
@@ -694,8 +694,8 @@ avl_split(node_t *root, PyObject *key,
             (*o_part1) = new_left;
             (*o_part2) = rr;
             /*return (new_left, rr, b, bv);*/
-            print_node("part1", *o_part1);
-            print_node("part2", *o_part2);
+            /*print_node("part1", *o_part1);*/
+            /*print_node("part2", *o_part2);*/
         }
     }
 }
@@ -776,20 +776,20 @@ static void avl_splice(node_t *root, PyObject *start_key, PyObject *stop_key,
     PyObject *start_val, *stop_val;
     node_t *left, *midright, *middle, *right;
 
-    printf("------- SPLICE (C)\n");             
-    print_node("root", root);
-    printf("(start_key) %s\n", REPR(start_key));
-    printf("(stop_key) %s\n", REPR(stop_key));
+    /*printf("------- SPLICE (C)\n");             */
+    /*print_node("root", root);*/
+    /*printf("(start_key) %s\n", REPR(start_key));*/
+    /*printf("(stop_key) %s\n", REPR(stop_key));*/
 
     // Split tree into three parts
     avl_split(root, start_key, &left, &midright, &start_flag, &start_val);
-    print_node("left", left);
-    print_node("midright", midright);
+    /*print_node("left", left);*/
+    /*print_node("midright", midright);*/
     avl_split(midright, stop_key, &middle, &right, &stop_flag, &stop_val);
 
-    print_node("left", left);
-    print_node("middle", middle);
-    print_node("right", right);
+    /*print_node("left", left);*/
+    /*print_node("middle", middle);*/
+    /*print_node("right", right);*/
 
     // Insert the start_key back into the middle part if it was removed
     if (start_flag) {
@@ -805,11 +805,11 @@ static void avl_splice(node_t *root, PyObject *start_key, PyObject *stop_key,
     else {
         (*t_outer) = avl_join2(left, right);
     }
-    printf("start_flag %d\n", start_flag);
-    printf("stop_flag %d\n", stop_flag);
+    /*printf("start_flag %d\n", start_flag);*/
+    /*printf("stop_flag %d\n", stop_flag);*/
 
-    printf("KEY(*t_outer) %s\n", PyString_AsString(PyObject_Repr(KEY((*t_outer)))));
-    printf("KEY(*t_inner) %s\n", PyString_AsString(PyObject_Repr(KEY((*t_inner)))));
+    /*printf("KEY(*t_outer) %s\n", PyString_AsString(PyObject_Repr(KEY((*t_outer)))));*/
+    /*printf("KEY(*t_inner) %s\n", PyString_AsString(PyObject_Repr(KEY((*t_inner)))));*/
 
     /*printf("*t_outer %p\n", *t_outer);*/
     /*printf("*t_inner %p\n", *t_inner);*/

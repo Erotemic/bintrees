@@ -518,23 +518,23 @@ def avl_splice(root, start_key, stop_key):
 
     O(log(n))
     """
-    import utool as ut
-    ut.cprint('----- SPLICE(PY) -', 'yellow')
-    print('-----')
-    print('root.key = %r' % (root.key,))
-    print('start_key = %r' % (start_key,))
-    print('stop_key = %r' % (stop_key,))
+    # import utool as ut
+    # ut.cprint('----- SPLICE(PY) -', 'yellow')
+    # print('-----')
+    # print('root.key = %r' % (root.key,))
+    # print('start_key = %r' % (start_key,))
+    # print('stop_key = %r' % (stop_key,))
 
     # Split tree into three parts
     left, midright, start_flag, start_val = avl_split(root, start_key)
-    print('left.key = %r' % (left.key,))
-    print('midright.key = %r' % (midright.key,))
+    # print('left.key = %r' % (left.key,))
+    # print('midright.key = %r' % (midright.key,))
 
     middle, right, stop_flag, stop_val = avl_split(midright, stop_key)
 
-    print('left.key = %r' % (left.key,))
-    print('middle.key = %r' % (middle.key,))
-    print('right.key = %r' % (right.key,))
+    # print('left.key = %r' % (left.key,))
+    # print('middle.key = %r' % (middle.key,))
+    # print('right.key = %r' % (right.key,))
 
     # Insert the start_key back into the middle part if it was removed
     if start_flag:
@@ -546,7 +546,7 @@ def avl_splice(root, start_key, stop_key):
         t_outer = avl_join(left, right, stop_key, stop_val)
     else:
         t_outer =  avl_join2(left, right)
-    ut.cprint('-----', 'yellow')
+    # ut.cprint('-----', 'yellow')
     return t_inner, t_outer
 
 
@@ -672,11 +672,11 @@ def avl_split(root, key):
             b is a flag indicating if key in root
             v is the value of the key if it existed
     """
-    print('----- SPLIT -')
-    print('root = %r' % (None if root is None else root.key,))
+    # print('----- SPLIT -')
+    # print('root = %r' % (None if root is None else root.key,))
     # TODO: keep track of the size of the sets being avl_split if possible
     if root is None:
-        print('Split NULL')
+        # print('Split NULL')
         return (root, root, False, None)
     else:
         l, r = root.left, root.right
@@ -685,28 +685,28 @@ def avl_split(root, key):
         if key == t_key:
             part1 = l
             part2 = r
-            print('Split Case1')
-            print('part1 = %r' % (None if part1 is None else part1.key,))
-            print('part2 = %r' % (None if part2 is None else part2.key,))
-            return (l, r, True, t_val)
+            # print('Split Case1')
+            # print('part1 = %r' % (None if part1 is None else part1.key,))
+            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            return (part1, part2, True, t_val)
         elif key < t_key:
-            print('Split Case2')
+            # print('Split Case2')
             ll, lr, b, bv = avl_split(l, key)
             new_right = avl_join(lr, r, t_key, t_val)
             part1 = ll
             part2 = new_right
-            print('part1 = %r' % (None if part1 is None else part1.key,))
-            print('part2 = %r' % (None if part2 is None else part2.key,))
-            return (ll, new_right, b, bv)
+            # print('part1 = %r' % (None if part1 is None else part1.key,))
+            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            return (part1, part2, b, bv)
         else:
-            print('Split Case3')
+            # print('Split Case3')
             rl, rr, b, bv = avl_split(r, key)
             new_left = avl_join(l, rl, t_key, t_val)
             part1 = new_left
             part2 = rr
-            print('part1 = %r' % (None if part1 is None else part1.key,))
-            print('part2 = %r' % (None if part2 is None else part2.key,))
-            return (new_left, rr, b, bv)
+            # print('part1 = %r' % (None if part1 is None else part1.key,))
+            # print('part2 = %r' % (None if part2 is None else part2.key,))
+            return (part1, part2, b, bv)
 
 
 def avl_join(t1, t2, key, value):
