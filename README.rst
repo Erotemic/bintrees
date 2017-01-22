@@ -1,9 +1,20 @@
+FORK NOTES
+==========
+
 Fork of bintrees
 Currently working on split functionality for AVL trees
 https://bitbucket.org/mozman/bintrees
 
 The original author's github profile is https://github.com/mozman
 
+A PR was submitted to the original REPO but declined because this package is 
+essentially superceded by sortedcontainers. 
+
+The original PR discussion can be found here
+https://bitbucket.org/mozman/bintrees/pull-requests/8/wip-adding-fast-inplace-set-operations/diff
+
+The sortedcontainers repo is here:
+https://github.com/grantjenks/sorted_containers
 
 Binary Tree Package
 ===================
