@@ -2,6 +2,7 @@ Fork of bintrees
 Currently working on split functionality for AVL trees
 https://bitbucket.org/mozman/bintrees
 
+The original author's github profile is https://github.com/mozman
 
 
 Binary Tree Package
@@ -20,13 +21,6 @@ Source of Algorithms
 --------------------
 
 AVL- and RBTree algorithms taken from Julienne Walker: http://eternallyconfuzzled.com/jsw_home.aspx
-
-
-For notes on Parent Pointers see:
-http://eternallyconfuzzled.com/tuts/datastructures/jsw_tut_bst1.aspx
-I believe this might use  Right Threading instead.
-
-Actually I think it just uses a stack and assumes that is enough.
 
 Trees written in Python
 -----------------------
